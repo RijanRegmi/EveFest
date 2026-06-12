@@ -1,0 +1,30 @@
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+export async function request(endpoint, options = {}) {
+  const token = localStorage.getItem("token");
+  
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const config = {
+    ...options,
+    headers,
+  };
+
+  if (config.body && typeof config.body === "object") {
+    config.body = JSON.stringify(config.body);
+  }
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.message || `API error: ${response.status} ${response.statusText}`;
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+}
