@@ -3,13 +3,20 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Sun, Moon, Calendar, User, LogOut, LayoutDashboard, PlusCircle } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { Sun, Moon, Calendar, User, LogOut, LayoutDashboard, PlusCircle, ShieldCheck, Info, HelpCircle } from "lucide-react";
 
 export default function Navbar({ currentView, setCurrentView }) {
   const { theme, toggleTheme, user, logout, setAuthModal } = useApp();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+
+  const isExploreActive = pathname === "/" && (!currentView || currentView === "explore");
+  const isDashboardActive = pathname === "/" && currentView === "dashboard";
+  const isAboutActive = pathname === "/about";
+  const isContactActive = pathname === "/contact";
+  const isAdminActive = pathname === "/admin";
 
   const handleNav = (view) => {
     if (setCurrentView) {
@@ -31,24 +38,41 @@ export default function Navbar({ currentView, setCurrentView }) {
           <span className="logo-text">Eve<span className="text-gradient">Fest</span></span>
         </div>
 
-        {/* Desktop Nav Actions */}
-        <div className="nav-actions">
+        {/* Center: Navigation Links */}
+        <nav className="nav-links">
           <button 
-            className={`nav-link ${currentView === "explore" ? "active" : ""}`}
+            className={`nav-link ${isExploreActive ? "active" : ""}`}
             onClick={() => handleNav("explore")}
           >
             Explore
           </button>
           
+          <Link href="/about" className={`nav-link ${isAboutActive ? "active" : ""}`}>
+            About
+          </Link>
+          
+          <Link href="/contact" className={`nav-link ${isContactActive ? "active" : ""}`}>
+            Contact Us
+          </Link>
+          
           {user && (
             <button 
-              className={`nav-link ${currentView === "dashboard" ? "active" : ""}`}
+              className={`nav-link ${isDashboardActive ? "active" : ""}`}
               onClick={() => handleNav("dashboard")}
             >
               Dashboard
             </button>
           )}
 
+          {user && user.role === "admin" && (
+            <Link href="/admin" className={`nav-link text-indigo ${isAdminActive ? "active" : ""}`} style={{ fontWeight: 700 }}>
+              Admin Console
+            </Link>
+          )}
+        </nav>
+
+        {/* Right: Utilities */}
+        <div className="nav-utilities">
           {/* Theme Toggle */}
           <button className="btn-icon theme-toggle" onClick={toggleTheme} aria-label="Toggle Theme">
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
@@ -82,6 +106,23 @@ export default function Navbar({ currentView, setCurrentView }) {
                   <button onClick={() => { router.push("/host-event"); setDropdownOpen(false); }} className="dropdown-item">
                     <PlusCircle size={16} />
                     Host an Event
+                  </button>
+                  
+                  {user && user.role === "admin" && (
+                    <button onClick={() => { router.push("/admin"); setDropdownOpen(false); }} className="dropdown-item">
+                      <ShieldCheck size={16} className="text-indigo" />
+                      Admin Console
+                    </button>
+                  )}
+
+                  <button onClick={() => { router.push("/about"); setDropdownOpen(false); }} className="dropdown-item">
+                    <HelpCircle size={16} />
+                    About EveFest
+                  </button>
+
+                  <button onClick={() => { router.push("/contact"); setDropdownOpen(false); }} className="dropdown-item">
+                    <Info size={16} />
+                    Contact Support
                   </button>
                   
                   <div className="dropdown-divider"></div>
@@ -157,10 +198,15 @@ export default function Navbar({ currentView, setCurrentView }) {
           letter-spacing: -0.5px;
           color: var(--fg-primary);
         }
-        .nav-actions {
+        .nav-links {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 1.5rem;
+        }
+        .nav-utilities {
+          display: flex;
+          align-items: center;
+          gap: 1.25rem;
         }
         .nav-link {
           font-size: 0.95rem;

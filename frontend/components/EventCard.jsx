@@ -1,9 +1,12 @@
 "use client";
 
 import React from "react";
-import { Calendar, MapPin, Tv, Users, ArrowRight } from "lucide-react";
+import { Calendar, MapPin, Tv, Users, ArrowRight, ShieldCheck } from "lucide-react";
+import { useApp } from "../context/AppContext";
 
 export default function EventCard({ event, onClick }) {
+  const { bookings } = useApp();
+  const isBooked = bookings && bookings.some((b) => b.event?._id === event._id || b.event === event._id);
   const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000";
 
   // Resolve image URL - handles both absolute URLs and relative backend paths
@@ -32,6 +35,13 @@ export default function EventCard({ event, onClick }) {
       <div className="card-banner">
         <img src={resolveImageUrl(event.image)} alt={event.title} className="banner-img" loading="lazy" />
         
+        {isBooked && (
+          <div className="booked-badge" style={{ position: "absolute", top: "12px", right: "12px", background: "rgba(16, 185, 129, 0.85)", color: "white", fontSize: "0.72rem", fontWeight: "800", padding: "0.25rem 0.65rem", borderRadius: "var(--border-radius-sm)", border: "1px solid rgba(16, 185, 129, 0.35)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", gap: "0.25rem", zIndex: 5 }}>
+            <ShieldCheck size={12} />
+            BOOKED
+          </div>
+        )}
+
         {/* Date Box overlay */}
         <div className="date-badge">
           <span className="date-month">{monthStr}</span>

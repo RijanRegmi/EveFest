@@ -194,8 +194,6 @@ export async function bookEventApi(eventId, paymentDetails, token) {
       }
 
       const userId = token.replace("mock_token_", "");
-      const alreadyBooked = bookings.some((b) => b.event._id === eventId && b.user === userId);
-      if (alreadyBooked) throw new Error("You have already registered for this event!");
 
       event.registeredCount = (event.registeredCount || 0) + 1;
       events[eventIdx] = event;
@@ -260,6 +258,110 @@ export async function fetchEventById(id) {
       const event = localEvents.find((e) => e._id === id);
       if (!event) throw new Error("Event not found");
       return event;
+    }
+    throw error;
+  }
+}
+
+// === Admin Services ===
+
+export async function fetchUsersAdmin(token) {
+  try {
+    return await request("/admin/users");
+  } catch (error) {
+    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+      return JSON.parse(localStorage.getItem("mock_users") || "[]");
+    }
+    throw error;
+  }
+}
+
+export async function createUserAdmin(userData, token) {
+  try {
+    return await request("/admin/users", {
+      method: "POST",
+      body: userData,
+    });
+  } catch (error) {
+    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+      const mockUsers = JSON.parse(localStorage.getItem("mock_users") || "[]");
+      const newUser = {
+        _id: `user_${Date.now()}`,
+        name: userData.name,
+        username: userData.username,
+        email: userData.email,
+        phoneNumber: userData.phoneNumber,
+        role: userData.role || "user",
+      };
+      mockUsers.push(newUser);
+      localStorage.setItem("mock_users", JSON.stringify(mockUsers));
+      return newUser;
+    }
+    throw error;
+  }
+}
+
+export async function updateUserAdmin(userId, userData, token) {
+  try {
+    return await request(`/admin/users/${userId}`, {
+      method: "PUT",
+      body: userData,
+    });
+  } catch (error) {
+    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+      const mockUsers = JSON.parse(localStorage.getItem("mock_users") || "[]");
+      const idx = mockUsers.findIndex((u) => u._id === userId);
+      if (idx !== -1) {
+        mockUsers[idx] = { ...mockUsers[idx], ...userData };
+        localStorage.setItem("mock_users", JSON.stringify(mockUsers));
+        return mockUsers[idx];
+      }
+      throw new Error("Mock user not found");
+    }
+    throw error;
+  }
+}
+
+export async function deleteUserAdmin(userId, token) {
+  try {
+    return await request(`/admin/users/${userId}`, {
+      method: "DELETE",
+    });
+  } catch (error) {
+    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+      const mockUsers = JSON.parse(localStorage.getItem("mock_users") || "[]");
+      const filtered = mockUsers.filter((u) => u._id !== userId);
+      localStorage.setItem("mock_users", JSON.stringify(filtered));
+      
+      const bookings = getLocalBookings().filter(b => b.user !== userId);
+      saveLocalBookings(bookings);
+      
+      const events = getLocalEvents().filter(e => e.hostId !== userId);
+      saveLocalEvents(events);
+      
+      return { success: true };
+    }
+    throw error;
+  }
+}
+
+export async function takedownEventAdmin(eventId, reason, token) {
+  try {
+    return await request(`/admin/events/${eventId}/takedown`, {
+      method: "POST",
+      body: { reason },
+    });
+  } catch (error) {
+    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+      const events = getLocalEvents();
+      const idx = events.findIndex(e => e._id === eventId);
+      if (idx !== -1) {
+        events[idx].isTakedown = true;
+        events[idx].takedownReason = reason;
+        saveLocalEvents(events);
+        return { success: true, event: events[idx] };
+      }
+      throw new Error("Mock event not found");
     }
     throw error;
   }

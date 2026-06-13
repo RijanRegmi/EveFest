@@ -1,8 +1,27 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { fetchEvents, createEventApi, bookEventApi, cancelBookingApi, updateEventApi, deleteEventApi } from "@/services/eventService";
+import { 
+  fetchEvents, 
+  createEventApi, 
+  bookEventApi, 
+  cancelBookingApi, 
+  updateEventApi, 
+  deleteEventApi,
+  fetchUsersAdmin,
+  createUserAdmin,
+  updateUserAdmin,
+  deleteUserAdmin,
+  takedownEventAdmin
+} from "@/services/eventService";
 import { loginApi, registerApi, getProfileApi } from "@/services/authService";
+import {
+  fetchSupportMessages,
+  sendSupportMessage,
+  fetchAdminThreads,
+  fetchAdminThreadMessages,
+  sendAdminReply
+} from "@/services/supportService";
 
 const AppContext = createContext();
 
@@ -264,6 +283,151 @@ export function AppProvider({ children }) {
     }
   };
 
+  // === Admin Panel Actions ===
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [supportMessages, setSupportMessages] = useState([]);
+  const [adminThreads, setAdminThreads] = useState([]);
+
+  // Fetch all users (admin only)
+  const getAdminUsers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const usersData = await fetchUsersAdmin(token);
+      setAdminUsers(usersData);
+      return usersData;
+    } catch (error) {
+      showToast(error.message || "Failed to fetch users.", "error");
+      return [];
+    }
+  };
+
+  // Create new user (admin only)
+  const createAdminUser = async (userData) => {
+    try {
+      const token = localStorage.getItem("token");
+      const newUser = await createUserAdmin(userData, token);
+      setAdminUsers((prev) => [...prev, newUser]);
+      showToast(`User ${newUser.name} created successfully!`, "success");
+      return true;
+    } catch (error) {
+      showToast(error.message || "Failed to create user.", "error");
+      return false;
+    }
+  };
+
+  // Update user (admin only)
+  const updateAdminUser = async (userId, userData) => {
+    try {
+      const token = localStorage.getItem("token");
+      const updatedUser = await updateUserAdmin(userId, userData, token);
+      setAdminUsers((prev) => prev.map((u) => (u._id === userId ? updatedUser : u)));
+      showToast(`User ${updatedUser.name} updated successfully!`, "success");
+      return true;
+    } catch (error) {
+      showToast(error.message || "Failed to update user.", "error");
+      return false;
+    }
+  };
+
+  // Delete user (admin only)
+  const deleteAdminUser = async (userId) => {
+    try {
+      const token = localStorage.getItem("token");
+      await deleteUserAdmin(userId, token);
+      setAdminUsers((prev) => prev.filter((u) => u._id !== userId));
+      showToast("User deleted successfully.", "success");
+      return true;
+    } catch (error) {
+      showToast(error.message || "Failed to delete user.", "error");
+      return false;
+    }
+  };
+
+  // Take down event with reason (admin only)
+  const takedownEvent = async (eventId, reason) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await takedownEventAdmin(eventId, reason, token);
+      setEvents((prev) => prev.map((e) => (e._id === eventId ? { ...e, isTakedown: true, takedownReason: reason } : e)));
+      showToast("Event taken down successfully.", "success");
+      return true;
+    } catch (error) {
+      showToast(error.message || "Failed to take down event.", "error");
+      return false;
+    }
+  };
+
+  // === Live Support Chat Actions ===
+
+  // Fetch support messages (user side)
+  const getSupportMessages = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const msgs = await fetchSupportMessages(token);
+      setSupportMessages(msgs);
+    } catch (error) {
+      console.error("Failed to load support messages:", error);
+    }
+  };
+
+  // Send support message (user side)
+  const postSupportMessage = async (text) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return false;
+      const newMsg = await sendSupportMessage(text, token);
+      setSupportMessages((prev) => [...prev, newMsg]);
+      return true;
+    } catch (error) {
+      showToast(error.message || "Failed to send message.", "error");
+      return false;
+    }
+  };
+
+  // Fetch all support threads (admin side)
+  const getAdminThreads = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const threads = await fetchAdminThreads(token);
+      setAdminThreads(threads);
+      return threads;
+    } catch (error) {
+      console.error("Failed to fetch admin threads:", error);
+      return [];
+    }
+  };
+
+  // Fetch messages in specific thread (admin side)
+  const getAdminThreadMessages = async (userId) => {
+    try {
+      const token = localStorage.getItem("token");
+      return await fetchAdminThreadMessages(userId, token);
+    } catch (error) {
+      console.error("Failed to fetch thread messages:", error);
+      return [];
+    }
+  };
+
+  // Reply to thread (admin side)
+  const postAdminReply = async (userId, text) => {
+    try {
+      const token = localStorage.getItem("token");
+      const newMsg = await sendAdminReply(userId, text, token);
+      setAdminThreads((prev) =>
+        prev.map((t) =>
+          t.userId === userId
+            ? { ...t, latestMessage: { text: newMsg.text, createdAt: newMsg.createdAt } }
+            : t
+        )
+      );
+      return newMsg;
+    } catch (error) {
+      showToast(error.message || "Failed to send reply.", "error");
+      return null;
+    }
+  };
+
   // 6. Group Chat Room actions
   const sendChatMessage = (eventId, text) => {
     if (!user) return;
@@ -326,6 +490,19 @@ export function AppProvider({ children }) {
         deleteEvent,
         sendChatMessage,
         sendDirectMessage,
+        adminUsers,
+        getAdminUsers,
+        createAdminUser,
+        updateAdminUser,
+        deleteAdminUser,
+        takedownEvent,
+        supportMessages,
+        getSupportMessages,
+        postSupportMessage,
+        adminThreads,
+        getAdminThreads,
+        getAdminThreadMessages,
+        postAdminReply,
         refreshData: loadInitialData,
       }}
     >

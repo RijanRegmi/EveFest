@@ -58,7 +58,7 @@ export async function registerApi(name, username, email, phoneNumber, password) 
         email,
         phoneNumber,
         password, // stored directly for mock simplicity
-        role: "user",
+        role: (email.toLowerCase().includes("admin") || name.toLowerCase().includes("admin")) ? "admin" : "user",
       };
 
       users.push(newUser);

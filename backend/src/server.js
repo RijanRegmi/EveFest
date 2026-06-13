@@ -7,6 +7,8 @@ import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
 import Event from "./models/Event.js";
 import User from "./models/User.js";
@@ -113,6 +115,8 @@ connectDB().then(async () => {
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/support", supportRoutes);
 
 // Root path test response
 app.get("/", (req, res) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppProvider, useApp } from "../context/AppContext";
 import Navbar from "../components/Navbar";
@@ -426,5 +426,13 @@ function HomeContent() {
 }
 
 export default function Home() {
-  return <HomeContent />;
+  return (
+    <Suspense fallback={
+      <div className="loader-box" style={{ display: "flex", justifyContent: "center", padding: "5rem 0" }}>
+        <div className="spinner"></div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
+  );
 }

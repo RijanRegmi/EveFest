@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "../../../context/AppContext";
 import { fetchEventById } from "../../../services/eventService";
@@ -23,10 +23,11 @@ import {
   ShieldCheck as VerifiedIcon,
   BookOpen,
   Edit,
-  Trash2
+  Trash2,
+  ShieldOff
 } from "lucide-react";
 
-export default function EventDetailPage() {
+function EventDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -227,13 +228,88 @@ export default function EventDetailPage() {
   }
 
   // Check registration status
-  const userBooking = bookings.find((b) => b.event._id === event._id);
-  const isRegistered = !!userBooking;
+  const userEventBookings = bookings.filter(
+    (b) => b.event?._id === event._id || b.event === event._id
+  );
+  const isRegistered = userEventBookings.length > 0;
+  const [activeTicketIndex, setActiveTicketIndex] = useState(0);
+  const activeBooking = userEventBookings[activeTicketIndex] || userEventBookings[0] || null;
+  const qrCanvasRef = useRef(null);
+
   const isHost = user && event && (
     user._id === event.hostId ||
     user._id === event.hostId?._id ||
     user._id === event.hostId?.toString()
   );
+
+  // QR Code drawing logic
+  useEffect(() => {
+    if (!qrCanvasRef.current || !activeBooking) return;
+    const canvas = qrCanvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const size = canvas.width;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, size, size);
+    
+    // Pseudo QR Code deterministic random seeding from ticketCode
+    const code = activeBooking.ticketCode || "TICKET-SAMPLE";
+    let hash = 0;
+    for (let i = 0; i < code.length; i++) {
+      hash = code.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // 15x15 grid
+    const gridSize = 15;
+    const cellSize = size / gridSize;
+    
+    // Draw background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+    
+    // Corner patterns helper
+    const drawFinderPattern = (x, y) => {
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(x * cellSize, y * cellSize, 7 * cellSize, 7 * cellSize);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 5 * cellSize, 5 * cellSize);
+      ctx.fillStyle = "#000000";
+      ctx.fillRect((x + 2) * cellSize, (y + 2) * cellSize, 3 * cellSize, 3 * cellSize);
+    };
+    
+    // Helper to check if coordinate is inside corner patterns
+    const isFinder = (r, c) => {
+      if (r < 7 && c < 7) return true;
+      if (r < 7 && c >= gridSize - 7) return true;
+      if (r >= gridSize - 7 && c < 7) return true;
+      return false;
+    };
+    
+    // Draw finder patterns
+    drawFinderPattern(0, 0);
+    drawFinderPattern(gridSize - 7, 0);
+    drawFinderPattern(0, gridSize - 7);
+    
+    // Draw random data block
+    ctx.fillStyle = "#000000";
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        if (isFinder(r, c)) continue;
+        const val = Math.sin(hash + r * 13.5 + c * 37.7) * 10000;
+        const isFilled = (val - Math.floor(val)) > 0.48;
+        if (isFilled) {
+          ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+  }, [activeBooking]);
+
+  // Handle activeTicketIndex safety bounds when bookings change
+  useEffect(() => {
+    if (activeTicketIndex >= userEventBookings.length) {
+      setActiveTicketIndex(Math.max(0, userEventBookings.length - 1));
+    }
+  }, [userEventBookings.length, activeTicketIndex]);
 
   // Pricing & Capacity Details
   const isUnlimited = event.limit === "unlimited" || !event.limit;
@@ -254,6 +330,10 @@ export default function EventDetailPage() {
     if (!user) {
       router.push("/login");
       showToast("Please sign in to book event tickets", "warning");
+      return;
+    }
+    if (event.isTakedown) {
+      showToast("Booking is suspended for this event", "error");
       return;
     }
     if (event.price > 0) {
@@ -300,7 +380,15 @@ export default function EventDetailPage() {
   const handleCancel = async () => {
     if (window.confirm("Are you sure you want to cancel your ticket registration?")) {
       setBookingLoading(true);
-      await cancelBooking(userBooking._id);
+      await cancelBooking(activeBooking._id);
+      setBookingLoading(false);
+    }
+  };
+
+  const handleCancelSpecific = async (bookingId) => {
+    if (window.confirm("Are you sure you want to cancel this ticket pass?")) {
+      setBookingLoading(true);
+      await cancelBooking(bookingId);
       setBookingLoading(false);
     }
   };
@@ -331,6 +419,17 @@ export default function EventDetailPage() {
             Back to Home
           </button>
         </div>
+
+        {/* Takedown Banner Warning */}
+        {event.isTakedown && (
+          <div className="takedown-warning-banner glass-panel">
+            <AlertTriangle size={24} className="takedown-warning-icon" />
+            <div className="takedown-warning-content">
+              <h3>ATTENTION: THIS EVENT HAS BEEN TAKEN DOWN BY ADMINISTRATORS</h3>
+              <p>Reason: {event.takedownReason || "Violation of campus community guidelines."}</p>
+            </div>
+          </div>
+        )}
 
         {/* Hero Banner Area */}
         <section className="event-hero glass-panel">
@@ -558,25 +657,145 @@ export default function EventDetailPage() {
                    </div>
  
                    <div className="booking-action-wrapper">
-                     {isRegistered ? (
+                     {event.isTakedown ? (
+                       <div className="takedown-sidebar-banner" style={{ padding: "1rem 0", textAlign: "center" }}>
+                         <ShieldOff size={32} className="text-danger" style={{ marginBottom: "0.5rem", display: "block", marginLeft: "auto", marginRight: "auto" }} />
+                         <h4 style={{ color: "var(--color-danger)", fontWeight: "800", fontSize: "0.95rem" }}>Booking Suspended</h4>
+                         <p style={{ fontSize: "0.8rem", color: "var(--fg-secondary)", textAlign: "center", lineHeight: "1.4", marginTop: "0.25rem" }}>
+                           This event has been taken down by moderators and ticket booking is closed.
+                         </p>
+                       </div>
+                     ) : isRegistered ? (
                        <div className="registered-actions">
                          <div className="success-badge">
                            <ShieldCheck size={16} />
-                           Registered Attendee
+                           Booked: {userEventBookings.length} {userEventBookings.length === 1 ? "Ticket" : "Tickets"}
                          </div>
                          
-                         {/* Access Ticket Info */}
-                         <div className="ticket-reference-box">
-                           <span className="ref-lbl">Ticket Code Reference</span>
-                           <span className="ref-val">{userBooking.ticketCode}</span>
+                         {/* STACKED TICKETS CAROUSEL */}
+                         <div className="ticket-stack-container" style={{ position: "relative", minHeight: "270px", marginTop: "0.75rem" }}>
+                           {userEventBookings.map((b, idx) => {
+                             const isActive = idx === activeTicketIndex;
+                             const offset = idx - activeTicketIndex;
+                             
+                             if (offset < 0 || offset > 2) return null;
+                             
+                             const scale = 1 - offset * 0.05;
+                             const translateY = offset * 12;
+                             const rotate = offset === 0 ? 0 : offset * 2.5 * (idx % 2 === 0 ? 1 : -1);
+                             const zIndex = 10 - offset;
+                             const opacity = 1 - offset * 0.35;
+
+                             return (
+                               <div 
+                                 key={b._id} 
+                                 className={`ticket-card-stack-item glass-panel ${isActive ? "active" : ""}`}
+                                 style={{
+                                   transform: `scale(${scale}) translateY(${translateY}px) rotate(${rotate}deg)`,
+                                   zIndex: zIndex,
+                                   opacity: opacity,
+                                   position: offset === 0 ? "relative" : "absolute",
+                                   top: 0,
+                                   left: 0,
+                                   right: 0,
+                                   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                   pointerEvents: isActive ? "auto" : "none",
+                                   padding: "1.25rem",
+                                   background: "rgba(18, 18, 20, 0.95)",
+                                   border: isActive ? "1px solid var(--accent-primary)" : "1px solid var(--glass-border)",
+                                   borderRadius: "var(--border-radius-md)"
+                                 }}
+                               >
+                                 {/* Ticket physical shape styling */}
+                                 <div className="ticket-body" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                                   <div className="ticket-info-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px dashed var(--glass-border)", paddingBottom: "0.5rem" }}>
+                                     <span className="ticket-num" style={{ fontSize: "0.72rem", fontWeight: "800", color: "var(--accent-primary)" }}>PASS {idx + 1} of {userEventBookings.length}</span>
+                                     <span className="ticket-holder" style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--fg-primary)", maxWidth: "100px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.userName || user?.name}</span>
+                                   </div>
+                                   
+                                   <div className="qr-box-wrapper" style={{ display: "flex", justifyContent: "center", padding: "0.5rem", background: "white", borderRadius: "var(--border-radius-sm)", width: "100px", height: "100px", margin: "0 auto" }}>
+                                     {isActive && (
+                                       <canvas 
+                                         ref={qrCanvasRef} 
+                                         width="90" 
+                                         height="90"
+                                         style={{ imageRendering: "pixelated" }}
+                                       />
+                                     )}
+                                   </div>
+
+                                   <div className="ticket-reference-box">
+                                     <span className="ref-lbl">Code Reference</span>
+                                     <span className="ref-val" style={{ fontSize: "0.8rem" }}>{b.ticketCode}</span>
+                                   </div>
+                                 </div>
+
+                                 <div className="ticket-footer" style={{ marginTop: "0.75rem" }}>
+                                   <button 
+                                     className="btn btn-secondary cancel-booking-btn"
+                                     onClick={() => handleCancelSpecific(b._id)}
+                                     disabled={bookingLoading}
+                                     style={{ padding: "0.45rem", fontSize: "0.78rem" }}
+                                   >
+                                     {bookingLoading ? "Processing..." : "Cancel This Pass"}
+                                   </button>
+                                 </div>
+                               </div>
+                             );
+                           })}
                          </div>
- 
+
+                         {/* Dots / Navigation Indicator */}
+                         {userEventBookings.length > 1 && (
+                           <div className="stack-navigation" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0.75rem 0 1.25rem" }}>
+                             <button 
+                               className="btn btn-secondary" 
+                               style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                               onClick={() => setActiveTicketIndex((prev) => (prev > 0 ? prev - 1 : userEventBookings.length - 1))}
+                             >
+                               &larr; Prev
+                             </button>
+                             <div className="dots-row" style={{ display: "flex", gap: "0.35rem" }}>
+                               {userEventBookings.map((_, idx) => (
+                                 <span 
+                                   key={idx} 
+                                   className={`dot ${idx === activeTicketIndex ? "active" : ""}`}
+                                   onClick={() => setActiveTicketIndex(idx)}
+                                   style={{
+                                     width: "6px",
+                                     height: "6px",
+                                     borderRadius: "50%",
+                                     background: idx === activeTicketIndex ? "var(--accent-primary)" : "var(--fg-tertiary)",
+                                     cursor: "pointer",
+                                     transition: "all 0.2s"
+                                   }}
+                                 />
+                               ))}
+                             </div>
+                             <button 
+                               className="btn btn-secondary" 
+                               style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                               onClick={() => setActiveTicketIndex((prev) => (prev < userEventBookings.length - 1 ? prev + 1 : 0))}
+                             >
+                               Next &rarr;
+                             </button>
+                           </div>
+                         )}
+
+                         {/* Book Another Ticket option */}
                          <button 
-                           className="btn btn-secondary cancel-booking-btn"
-                           onClick={handleCancel}
-                           disabled={bookingLoading}
+                           className="btn btn-primary btn-block"
+                           onClick={handleBookClick}
+                           disabled={isSoldOut || bookingLoading}
+                           style={{ marginTop: "0.5rem" }}
                          >
-                           {bookingLoading ? "Processing..." : "Cancel Ticket Pass"}
+                           {bookingLoading 
+                             ? "Processing..." 
+                             : isSoldOut 
+                               ? "Sold Out" 
+                               : event.price > 0 
+                                 ? "Book Another Pass" 
+                                 : "Register Another Free Pass"}
                          </button>
                        </div>
                      ) : (
@@ -1901,6 +2120,45 @@ export default function EventDetailPage() {
           color: var(--accent-primary);
         }
 
+        .takedown-warning-banner {
+          display: flex;
+          align-items: center;
+          gap: 1.25rem;
+          padding: 1.5rem 2rem;
+          background: rgba(239, 68, 68, 0.08);
+          border: 1px solid rgba(239, 68, 68, 0.25);
+          border-radius: var(--border-radius-md);
+          color: var(--fg-primary);
+          margin-bottom: 2rem;
+          box-shadow: var(--shadow-md);
+        }
+        .takedown-warning-icon {
+          color: var(--color-danger);
+          flex-shrink: 0;
+        }
+        .takedown-warning-content h3 {
+          font-size: 1rem;
+          font-weight: 850;
+          color: var(--color-danger);
+          margin-bottom: 0.25rem;
+          letter-spacing: -0.01em;
+        }
+        .takedown-warning-content p {
+          font-size: 0.88rem;
+          color: var(--fg-secondary);
+          line-height: 1.5;
+        }
+
+        .ticket-stack-container {
+          position: relative;
+          width: 100%;
+        }
+
+        .ticket-card-stack-item {
+          width: 100%;
+          box-shadow: var(--shadow-lg);
+        }
+
         /* RESPONSIVE BREAKPOINTS */
         @media (max-width: 968px) {
           .content-grid {
@@ -1943,5 +2201,17 @@ export default function EventDetailPage() {
         }
       `}</style>
     </>
+  );
+}
+
+export default function EventDetailPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh", gap: "1rem" }}>
+        <div className="spinner"></div>
+      </div>
+    }>
+      <EventDetailPageContent />
+    </Suspense>
   );
 }
