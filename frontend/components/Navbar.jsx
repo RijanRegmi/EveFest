@@ -4,19 +4,20 @@ import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Sun, Moon, Calendar, User, LogOut, LayoutDashboard, PlusCircle, ShieldCheck, Info, HelpCircle } from "lucide-react";
+import { Sun, Moon, Calendar, User, LogOut, LayoutDashboard, PlusCircle, ShieldCheck, Info, HelpCircle, Menu, X } from "lucide-react";
 
 export default function Navbar({ currentView, setCurrentView }) {
   const { theme, toggleTheme, user, logout, setAuthModal } = useApp();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isExploreActive = pathname === "/" && (!currentView || currentView === "explore");
-  const isDashboardActive = pathname === "/" && currentView === "dashboard";
-  const isAboutActive = pathname === "/about";
-  const isContactActive = pathname === "/contact";
-  const isAdminActive = pathname === "/admin";
+  const isExploreActive = (pathname === "/" || pathname === "" || !pathname) && (!currentView || currentView === "explore");
+  const isDashboardActive = (pathname === "/" && currentView === "dashboard");
+  const isAboutActive = pathname?.includes("/about") || pathname?.endsWith("about");
+  const isContactActive = pathname?.includes("/contact") || pathname?.endsWith("contact");
+  const isAdminActive = pathname?.includes("/admin") || pathname?.endsWith("admin");
 
   const handleNav = (view) => {
     if (setCurrentView) {
@@ -98,6 +99,11 @@ export default function Navbar({ currentView, setCurrentView }) {
                     <p className="user-email">{user.email}</p>
                   </div>
                   
+                  <button onClick={() => { router.push("/profile"); setDropdownOpen(false); }} className="dropdown-item">
+                    <User size={16} />
+                    My Profile
+                  </button>
+
                   <button onClick={() => handleNav("dashboard")} className="dropdown-item">
                     <LayoutDashboard size={16} />
                     My Dashboard
@@ -150,8 +156,65 @@ export default function Navbar({ currentView, setCurrentView }) {
               </Link>
             </div>
           )}
+
+          {/* Mobile menu toggle button */}
+          <button 
+            className="mobile-menu-toggle btn-icon" 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile navigation drawer */}
+      {mobileMenuOpen && (
+        <div className="mobile-menu-drawer glass-panel animate-slide-up">
+          <button 
+            className={`mobile-nav-link ${isExploreActive ? "active" : ""}`}
+            onClick={() => { handleNav("explore"); setMobileMenuOpen(false); }}
+          >
+            Explore
+          </button>
+          
+          <Link 
+            href="/about" 
+            className={`mobile-nav-link ${isAboutActive ? "active" : ""}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            About
+          </Link>
+          
+          <Link 
+            href="/contact" 
+            className={`mobile-nav-link ${isContactActive ? "active" : ""}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Contact Us
+          </Link>
+          
+          {user && (
+            <button 
+              className={`mobile-nav-link ${isDashboardActive ? "active" : ""}`}
+              onClick={() => { handleNav("dashboard"); setMobileMenuOpen(false); }}
+            >
+              Dashboard
+            </button>
+          )}
+
+          {user && user.role === "admin" && (
+            <Link 
+              href="/admin" 
+              className={`mobile-nav-link text-indigo ${isAdminActive ? "active" : ""}`}
+              style={{ fontWeight: 700 }}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Admin Console
+            </Link>
+          )}
+        </div>
+      )}
 
       <style jsx>{`
         .navbar-wrapper {
@@ -208,17 +271,24 @@ export default function Navbar({ currentView, setCurrentView }) {
           align-items: center;
           gap: 1.25rem;
         }
-        .nav-link {
+        :global(.nav-link) {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           font-size: 0.95rem;
           font-weight: 600;
           color: var(--fg-secondary);
           padding: 0.5rem 1rem;
           border-radius: var(--border-radius-sm);
           transition: var(--transition-fast);
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          font-family: inherit;
         }
-        .nav-link:hover, .nav-link.active {
-          color: var(--accent-primary);
-          background: rgba(99, 102, 241, 0.06);
+        :global(.nav-link:hover), :global(.nav-link.active) {
+          color: var(--accent-primary) !important;
+          background: rgba(99, 102, 241, 0.08) !important;
         }
         .user-dropdown-container {
           position: relative;
@@ -319,8 +389,77 @@ export default function Navbar({ currentView, setCurrentView }) {
           box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
         }
         
-        @media (max-width: 640px) {
-          .user-name, .nav-link {
+        :global(.nav-link.active) {
+          background: rgba(99, 102, 241, 0.15) !important;
+          box-shadow: 0 0 10px rgba(99, 102, 241, 0.15) !important;
+        }
+
+        .mobile-menu-toggle {
+          display: none;
+        }
+
+        /* Mobile drawer styles */
+        .mobile-menu-drawer {
+          position: absolute;
+          top: 75px;
+          left: 1rem;
+          right: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          padding: 1rem;
+          border-radius: var(--border-radius-md);
+          z-index: 999; /* Enforce top layer visibility */
+          box-shadow: var(--shadow-lg), 0 20px 40px rgba(0, 0, 0, 0.15);
+          background: rgba(255, 255, 255, 0.75) !important; /* Semi-transparent in light mode for blur effect */
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          backdrop-filter: blur(24px) !important;
+          -webkit-backdrop-filter: blur(24px) !important;
+        }
+
+        :global(.dark) .mobile-menu-drawer {
+          background: rgba(18, 18, 20, 0.75) !important; /* Semi-transparent in dark mode for blur effect */
+          border: 1px solid rgba(255, 255, 255, 0.08) !important;
+          box-shadow: var(--shadow-lg), 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        :global(.mobile-nav-link) {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: var(--fg-secondary);
+          padding: 0.65rem 1rem;
+          border-radius: var(--border-radius-sm);
+          text-align: left;
+          width: 100%;
+          transition: var(--transition-fast);
+          box-sizing: border-box;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          font-family: inherit;
+          margin: 0;
+        }
+
+        :global(.mobile-nav-link:hover), :global(.mobile-nav-link.active) {
+          color: var(--accent-primary) !important;
+          background: rgba(99, 102, 241, 0.08) !important;
+        }
+
+        :global(.mobile-nav-link.active) {
+          background: rgba(99, 102, 241, 0.15) !important;
+        }
+        
+        @media (max-width: 768px) {
+          .nav-links {
+            display: none;
+          }
+          .mobile-menu-toggle {
+            display: flex;
+          }
+          .user-name {
             display: none;
           }
           .logo-text {

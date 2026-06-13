@@ -103,6 +103,50 @@ export async function getProfileApi(token) {
   }
 }
 
+export async function updateProfileApi(userData, token) {
+  try {
+    return await request("/auth/profile", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: userData,
+    });
+  } catch (error) {
+    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+      if (!token.startsWith("mock_token_")) {
+        throw new Error("Invalid mock session token");
+      }
+      const userId = token.replace("mock_token_", "");
+      const users = getLocalUsers();
+      const userIndex = users.findIndex((u) => u._id === userId);
+      if (userIndex === -1) {
+        throw new Error("User profile not found");
+      }
+
+      if (userData.email && userData.email !== users[userIndex].email) {
+        if (users.some((u) => u.email === userData.email)) {
+          throw new Error("Email already in use");
+        }
+      }
+      if (userData.username && userData.username.toLowerCase() !== users[userIndex].username) {
+        if (users.some((u) => u.username === userData.username.toLowerCase())) {
+          throw new Error("Username already taken");
+        }
+      }
+
+      users[userIndex] = {
+        ...users[userIndex],
+        ...userData,
+        username: userData.username ? userData.username.toLowerCase() : users[userIndex].username,
+      };
+      saveLocalUsers(users);
+
+      const { password: _, ...userWithoutPassword } = users[userIndex];
+      return userWithoutPassword;
+    }
+    throw error;
+  }
+}
+
 export async function checkAvailabilityApi(field, value) {
   try {
     return await request("/auth/check-availability", {

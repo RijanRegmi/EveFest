@@ -14,7 +14,7 @@ import {
   deleteUserAdmin,
   takedownEventAdmin
 } from "@/services/eventService";
-import { loginApi, registerApi, getProfileApi } from "@/services/authService";
+import { loginApi, registerApi, getProfileApi, updateProfileApi } from "@/services/authService";
 import {
   fetchSupportMessages,
   sendSupportMessage,
@@ -168,6 +168,20 @@ export function AppProvider({ children }) {
     setUser(null);
     setBookings([]);
     showToast("Logged out successfully.");
+  };
+
+  const updateProfile = async (userData) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return false;
+      const updatedUser = await updateProfileApi(userData, token);
+      setUser((prev) => ({ ...prev, ...updatedUser }));
+      showToast("Profile updated successfully!");
+      return true;
+    } catch (error) {
+      showToast(error.message || "Failed to update profile.", "error");
+      return false;
+    }
   };
 
   // 4. Booking actions
@@ -483,6 +497,7 @@ export function AppProvider({ children }) {
         login,
         register,
         logout,
+        updateProfile,
         bookEvent,
         cancelBooking,
         hostEvent,

@@ -56,3 +56,13 @@ export const checkAvailability = async (req, res, next) => {
     next(error);
   }
 };
+
+export const updateUserProfile = async (req, res, next) => {
+  try {
+    const updatedUser = await authService.updateUserProfile(req.user._id, req.body);
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    res.status(400);
+    next(error);
+  }
+};

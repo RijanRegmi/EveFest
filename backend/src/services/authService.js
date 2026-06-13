@@ -92,3 +92,45 @@ export const checkAvailability = async (field, value) => {
   const user = await User.findOne(query);
   return !user; // true if available, false if taken
 };
+
+export const updateUserProfile = async (userId, updates) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error("User profile not found");
+  }
+
+  // Validate username and email uniqueness if changing
+  if (updates.email && updates.email.toLowerCase() !== user.email.toLowerCase()) {
+    const emailExists = await User.findOne({ email: updates.email.toLowerCase() });
+    if (emailExists) {
+      throw new Error("Email is already in use by another user");
+    }
+    user.email = updates.email.toLowerCase();
+  }
+
+  if (updates.username && updates.username.toLowerCase() !== user.username.toLowerCase()) {
+    const usernameExists = await User.findOne({ username: updates.username.toLowerCase() });
+    if (usernameExists) {
+      throw new Error("Username is already in use by another user");
+    }
+    user.username = updates.username.toLowerCase();
+  }
+
+  if (updates.name) user.name = updates.name;
+  if (updates.phoneNumber) user.phoneNumber = updates.phoneNumber;
+  
+  if (updates.password && updates.password.trim() !== "") {
+    user.password = updates.password;
+  }
+
+  await user.save();
+
+  return {
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    phoneNumber: user.phoneNumber,
+    role: user.role,
+  };
+};
