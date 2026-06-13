@@ -31,39 +31,9 @@ export function AppProvider({ children }) {
   const [events, setEvents] = useState([]);
   const [bookings, setBookings] = useState([]);
   
-  const [chatMessages, setChatMessages] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return JSON.parse(localStorage.getItem("evefest_chat_messages") || "{}");
-      } catch (e) {
-        return {};
-      }
-    }
-    return {};
-  });
+  const [chatMessages, setChatMessages] = useState({});
+  const [directMessages, setDirectMessages] = useState([]);
 
-  const [directMessages, setDirectMessages] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return JSON.parse(localStorage.getItem("evefest_direct_messages") || "[]");
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("evefest_chat_messages", JSON.stringify(chatMessages));
-    }
-  }, [chatMessages]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("evefest_direct_messages", JSON.stringify(directMessages));
-    }
-  }, [directMessages]);
 
   const [authModal, setAuthModal] = useState({ open: false, tab: "login" });
   const [loading, setLoading] = useState(true);
@@ -442,40 +412,119 @@ export function AppProvider({ children }) {
     }
   };
 
-  // 6. Group Chat Room actions
-  const sendChatMessage = (eventId, text) => {
-    if (!user) return;
-    
-    const newMessage = {
-      id: Date.now(),
-      sender: user.name,
-      senderId: user._id,
-      text,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
+  // 6. Group Chat Room actions — backed by real API
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-    setChatMessages((prev) => {
-      const current = prev[eventId] || [];
-      return { ...prev, [eventId]: [...current, newMessage] };
-    });
+  // Fetch group chat messages for an event from the server
+  const fetchGroupMessages = async (eventId) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await fetch(`${API_URL}/chat/${eventId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return; // silently ignore (e.g. not a registered attendee)
+      const msgs = await res.json();
+      setChatMessages((prev) => ({ ...prev, [eventId]: msgs }));
+    } catch (err) {
+      console.error("[GroupChat] fetch error:", err);
+    }
   };
 
-  // 7. Direct Messages (Support Chat)
-  const sendDirectMessage = (eventId, attendeeId, attendeeName, text) => {
+  // Send a message to the event group chat
+  const sendChatMessage = async (eventId, text) => {
     if (!user) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/chat/${eventId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.message || "Failed to send message.", "error");
+        return;
+      }
+      const newMsg = await res.json();
+      // Optimistically add to local state so sender sees it instantly
+      setChatMessages((prev) => {
+        const current = prev[eventId] || [];
+        // Avoid duplicate if polling already picked it up
+        if (current.find((m) => m._id === newMsg._id)) return prev;
+        return { ...prev, [eventId]: [...current, newMsg] };
+      });
+    } catch (err) {
+      showToast("Network error. Message not sent.", "error");
+    }
+  };
 
-    const newMessage = {
-      id: Date.now(),
-      eventId,
-      attendeeId,
-      attendeeName,
-      senderId: user._id,
-      senderName: user.name,
-      text,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
 
-    setDirectMessages((prev) => [...prev, newMessage]);
+  // 7. Direct Messages (Support Chat) — backed by real API
+  const fetchDirectMessages = async (eventId) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await fetch(`${API_URL}/direct-messages/event/${eventId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const msgs = await res.json();
+      setDirectMessages(msgs);
+    } catch (err) {
+      console.error("[DirectMessages] fetch error:", err);
+    }
+  };
+
+  const sendDirectMessage = async (eventId, attendeeId, attendeeName, text) => {
+    if (!user) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/direct-messages/event/${eventId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text, attendeeId, attendeeName }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.message || "Failed to send message.", "error");
+        return;
+      }
+      const newMsg = await res.json();
+      setDirectMessages((prev) => {
+        if (prev.find((m) => m._id === newMsg._id)) return prev;
+        return [...prev, newMsg];
+      });
+    } catch (err) {
+      showToast("Network error. Message not sent.", "error");
+    }
+  };
+
+  const markDirectMessagesAsSeen = async (eventId, attendeeId) => {
+    if (!user) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/direct-messages/seen/${eventId}/${attendeeId}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      setDirectMessages((prev) =>
+        prev.map((msg) =>
+          msg.eventId === eventId && msg.attendeeId === attendeeId && msg.senderId !== user._id
+            ? { ...msg, seen: true }
+            : msg
+        )
+      );
+    } catch (err) {
+      console.error("[DirectMessages] mark seen error:", err);
+    }
   };
 
   return (
@@ -489,6 +538,11 @@ export function AppProvider({ children }) {
         bookings,
         chatMessages,
         directMessages,
+        fetchDirectMessages,
+        fetchGroupMessages,
+        sendChatMessage,
+        sendDirectMessage,
+        markDirectMessagesAsSeen,
         authModal,
         setAuthModal,
         loading,
@@ -503,8 +557,6 @@ export function AppProvider({ children }) {
         hostEvent,
         updateEvent,
         deleteEvent,
-        sendChatMessage,
-        sendDirectMessage,
         adminUsers,
         getAdminUsers,
         createAdminUser,

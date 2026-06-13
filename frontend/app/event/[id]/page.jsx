@@ -40,8 +40,11 @@ function EventDetailPageContent() {
     cancelBooking,
     chatMessages,
     directMessages,
+    fetchDirectMessages,
+    fetchGroupMessages,
     sendChatMessage,
     sendDirectMessage,
+    markDirectMessagesAsSeen,
     showToast,
     deleteEvent,
   } = useApp();
@@ -62,6 +65,7 @@ function EventDetailPageContent() {
   const [chatTab, setChatTab] = useState("group"); // 'group' | 'support'
   const [chatInput, setChatInput] = useState("");
   const [supportInput, setSupportInput] = useState("");
+  const [lastViewedGroupTime, setLastViewedGroupTime] = useState(Date.now());
   const [selectedAttendeeId, setSelectedAttendeeId] = useState(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutData, setCheckoutData] = useState({ cardNum: "", expiry: "", cvv: "" });
@@ -73,6 +77,27 @@ function EventDetailPageContent() {
     (b) => b.event?._id === event._id || b.event === event._id
   ) : [];
   const isRegistered = userEventBookings.length > 0;
+  const isHost = user && event && (
+    user._id === event.hostId ||
+    user._id === event.hostId?._id ||
+    user._id === event.hostId?.toString()
+  );
+
+  // Chat room messages
+  const eventChats = event ? (chatMessages[event._id] || []) : [];
+
+  const hasUnreadGroup = chatTab !== "group" && eventChats.some(
+    (msg) => msg.createdAt && new Date(msg.createdAt).getTime() > lastViewedGroupTime
+  );
+
+  const hasUnreadSupport = directMessages.some(
+    (msg) =>
+      msg.eventId === event?._id &&
+      msg.senderId !== user?._id &&
+      !msg.seen &&
+      (isHost ? true : msg.attendeeId === user?._id)
+  );
+
   const [activeTicketIndex, setActiveTicketIndex] = useState(0);
   const activeBooking = userEventBookings[activeTicketIndex] || userEventBookings[0] || null;
   const qrCanvasRef = useRef(null);
@@ -171,6 +196,43 @@ function EventDetailPageContent() {
     
     getEvent();
   }, [id]);
+
+  // Real-time group chat & direct support chat polling — fetch every 3s when user is a registered attendee or the host
+  useEffect(() => {
+    if (!id || !user || (!isRegistered && !isHost)) return;
+
+    // Initial fetch
+    fetchGroupMessages(id);
+    fetchDirectMessages(id);
+
+    // Poll every 3 seconds
+    const chatPoll = setInterval(() => {
+      fetchGroupMessages(id);
+      fetchDirectMessages(id);
+    }, 3000);
+
+    return () => clearInterval(chatPoll);
+  }, [id, user, isRegistered, isHost]);
+
+  // Mark direct support messages as seen when chat thread is opened/active
+  useEffect(() => {
+    if (!event || !user || chatTab !== "support") return;
+
+    if (isHost) {
+      if (selectedAttendeeId) {
+        markDirectMessagesAsSeen(event._id, selectedAttendeeId);
+      }
+    } else {
+      markDirectMessagesAsSeen(event._id, user._id);
+    }
+  }, [event, user, chatTab, isHost, selectedAttendeeId, directMessages.length]);
+
+  // Update last viewed group chat time when tab is active or new messages arrive while tab is active
+  useEffect(() => {
+    if (chatTab === "group") {
+      setLastViewedGroupTime(Date.now());
+    }
+  }, [chatTab, eventChats.length]);
 
   if (loadingEvent) {
     return (
@@ -311,20 +373,12 @@ function EventDetailPageContent() {
       </>
     );
   }
-
-  const isHost = user && event && (
-    user._id === event.hostId ||
-    user._id === event.hostId?._id ||
-    user._id === event.hostId?.toString()
-  );
-
   // Pricing & Capacity Details
   const isUnlimited = event.limit === "unlimited" || !event.limit;
   const seatsLeft = isUnlimited ? null : Math.max(0, event.limit - (event.registeredCount || 0));
   const isSoldOut = !isUnlimited && seatsLeft <= 0;
 
-  // Chat room messages
-  const eventChats = chatMessages[event._id] || [];
+
 
   const handleSendChat = (e) => {
     e.preventDefault();
@@ -831,14 +885,22 @@ function EventDetailPageContent() {
                 <button 
                   className={`chat-tab-btn ${chatTab === "group" ? "active" : ""}`}
                   onClick={() => setChatTab("group")}
+                  style={{ position: "relative" }}
                 >
                   Group Chat
+                  {hasUnreadGroup && (
+                    <span className="tab-unread-dot"></span>
+                  )}
                 </button>
                 <button 
                   className={`chat-tab-btn ${chatTab === "support" ? "active" : ""}`}
                   onClick={() => setChatTab("support")}
+                  style={{ position: "relative" }}
                 >
                   Host Support
+                  {hasUnreadSupport && (
+                    <span className="tab-unread-dot"></span>
+                  )}
                 </button>
               </div>
 
@@ -868,12 +930,18 @@ function EventDetailPageContent() {
                       ) : (
                         eventChats.map((msg) => (
                           <div 
-                            key={msg.id} 
+                            key={msg._id || msg.id} 
                             className={`chat-bubble ${msg.senderId === user?._id ? "own" : ""}`}
                           >
-                            <span className="sender-name">{msg.sender}</span>
+                            {msg.senderId !== user?._id && (
+                              <span className="sender-name">{msg.senderName || msg.sender}</span>
+                            )}
                             <p className="bubble-text">{msg.text}</p>
-                            <span className="msg-time">{msg.time}</span>
+                            <span className="msg-time">
+                              {msg.createdAt 
+                                ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                : msg.time}
+                            </span>
                           </div>
                         ))
                       )}
@@ -942,12 +1010,23 @@ function EventDetailPageContent() {
                                 .filter(msg => msg.eventId === event._id && msg.attendeeId === selectedAttendeeId)
                                 .map((msg) => (
                                   <div 
-                                    key={msg.id} 
+                                    key={msg._id || msg.id} 
                                     className={`chat-bubble ${msg.senderId === user?._id ? "own" : ""}`}
                                   >
-                                    <span className="sender-name">{msg.senderName}</span>
+                                    {msg.senderId !== user?._id && (
+                                      <span className="sender-name">{msg.senderName}</span>
+                                    )}
                                     <p className="bubble-text">{msg.text}</p>
-                                    <span className="msg-time">{msg.time}</span>
+                                    <span className="msg-time">
+                                      {msg.createdAt 
+                                        ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                        : msg.time}
+                                      {msg.senderId === user?._id && (
+                                        <span className="seen-status" style={{ fontSize: "0.75rem", opacity: 0.7, marginLeft: "4px" }}>
+                                          {msg.seen ? " • Seen" : " • Sent"}
+                                        </span>
+                                      )}
+                                    </span>
                                   </div>
                                 ))
                             )}
@@ -981,16 +1060,24 @@ function EventDetailPageContent() {
                           const eventDirectMessages = directMessages.filter(msg => msg.eventId === event._id);
                           const threads = {};
                           eventDirectMessages.forEach(msg => {
+                            const formattedTime = msg.createdAt 
+                              ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : msg.time;
+                            const isUnread = !msg.seen && msg.senderId !== user?._id;
                             if (!threads[msg.attendeeId]) {
                               threads[msg.attendeeId] = {
                                 attendeeId: msg.attendeeId,
                                 attendeeName: msg.attendeeName,
                                 lastMessage: msg.text,
-                                time: msg.time
+                                time: formattedTime,
+                                hasUnread: isUnread
                               };
                             } else {
                               threads[msg.attendeeId].lastMessage = msg.text;
-                              threads[msg.attendeeId].time = msg.time;
+                              threads[msg.attendeeId].time = formattedTime;
+                              if (isUnread) {
+                                threads[msg.attendeeId].hasUnread = true;
+                              }
                             }
                           });
                           const threadList = Object.values(threads);
@@ -1007,14 +1094,19 @@ function EventDetailPageContent() {
                           return threadList.map((t) => (
                             <div 
                               key={t.attendeeId} 
-                              className="thread-item"
+                              className={`thread-item ${t.hasUnread ? "unread" : ""}`}
                               onClick={() => setSelectedAttendeeId(t.attendeeId)}
                             >
                               <div className="thread-meta">
-                                <span className="thread-user">{t.attendeeName}</span>
+                                <span className="thread-user" style={{ fontWeight: t.hasUnread ? "700" : "inherit" }}>
+                                  {t.attendeeName}
+                                  {t.hasUnread && <span className="unread-dot" style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--color-primary)", marginLeft: "6px" }}></span>}
+                                </span>
                                 <span className="thread-time">{t.time}</span>
                               </div>
-                              <p className="thread-last-msg">{t.lastMessage}</p>
+                              <p className="thread-last-msg" style={{ fontWeight: t.hasUnread ? "500" : "inherit", color: t.hasUnread ? "var(--fg-primary)" : "var(--fg-secondary)" }}>
+                                {t.lastMessage}
+                              </p>
                             </div>
                           ));
                         })()}
@@ -1039,12 +1131,23 @@ function EventDetailPageContent() {
                           .filter(msg => msg.eventId === event._id && msg.attendeeId === user?._id)
                           .map((msg) => (
                             <div 
-                              key={msg.id} 
+                              key={msg._id || msg.id} 
                               className={`chat-bubble ${msg.senderId === user?._id ? "own" : ""}`}
                             >
-                              <span className="sender-name">{msg.senderName}</span>
+                              {msg.senderId !== user?._id && (
+                                <span className="sender-name">{msg.senderName}</span>
+                              )}
                               <p className="bubble-text">{msg.text}</p>
-                              <span className="msg-time">{msg.time}</span>
+                              <span className="msg-time">
+                                {msg.createdAt 
+                                  ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                  : msg.time}
+                                {msg.senderId === user?._id && (
+                                  <span className="seen-status" style={{ fontSize: "0.75rem", opacity: 0.7, marginLeft: "4px" }}>
+                                    {msg.seen ? " • Seen" : " • Sent"}
+                                  </span>
+                                )}
+                              </span>
                             </div>
                           ))
                       )}
@@ -1950,6 +2053,28 @@ function EventDetailPageContent() {
         .thread-item:hover {
           border-color: var(--accent-primary);
           background: rgba(99, 102, 241, 0.02);
+        }
+        .thread-item.unread {
+          border-color: var(--accent-primary) !important;
+          background: rgba(99, 102, 241, 0.06) !important;
+        }
+        .unread-dot {
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background-color: var(--accent-primary);
+          margin-left: 6px;
+        }
+        .tab-unread-dot {
+          position: absolute;
+          top: 6px;
+          right: 8px;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background-color: var(--accent-primary);
+          box-shadow: 0 0 6px var(--accent-primary);
         }
 
         .thread-meta {

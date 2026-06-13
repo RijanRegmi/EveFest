@@ -9,6 +9,8 @@ import eventRoutes from "./routes/eventRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import supportRoutes from "./routes/supportRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
+import directMessageRoutes from "./routes/directMessageRoutes.js";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
 import Event from "./models/Event.js";
 import User from "./models/User.js";
@@ -117,6 +119,8 @@ app.use("/api/events", eventRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/support", supportRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/direct-messages", directMessageRoutes);
 
 // Root path test response
 app.get("/", (req, res) => {

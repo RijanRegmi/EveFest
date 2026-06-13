@@ -24,13 +24,23 @@ export default function ContactPage() {
   const [loadingChat, setLoadingChat] = useState(false);
   const scrollRef = useRef(null);
 
-  // Load support messages on mount or user login change
+  // Load support messages on mount, then poll every 3 seconds for real-time updates
   useEffect(() => {
-    if (user) {
-      setLoadingChat(true);
-      getSupportMessages().finally(() => setLoadingChat(false));
-    }
+    if (!user) return;
+
+    // Initial load with spinner
+    setLoadingChat(true);
+    getSupportMessages().finally(() => setLoadingChat(false));
+
+    // Silent background poll — no loading state shown
+    const pollInterval = setInterval(() => {
+      getSupportMessages();
+    }, 3000);
+
+    // Cleanup on unmount or user change
+    return () => clearInterval(pollInterval);
   }, [user]);
+
 
   // Scroll to bottom of chat when messages update
   useEffect(() => {
@@ -174,18 +184,28 @@ export default function ContactPage() {
                         <p>Ask questions regarding event hosting rules, ticket billing issues, or submit coordinate disputes. A coordinator will reply here shortly.</p>
                       </div>
                     ) : (
-                      supportMessages.map((msg) => {
+                      supportMessages.map((msg, idx) => {
                         const isAdminMsg = msg.senderName.includes("Support Admin") || msg.senderId !== user._id;
+                        const isLast = idx === supportMessages.length - 1;
+                        const isLastUserMsg = !isAdminMsg && isLast;
+                        // Check if any admin replied after this user message
+                        const hasAdminReplied = !isAdminMsg && supportMessages
+                          .slice(idx + 1)
+                          .some(m => m.senderName.includes("Support Admin") || m.senderId !== user._id);
                         return (
-                          <div 
-                            key={msg._id} 
-                            className={`message-bubble ${isAdminMsg ? "admin" : "user"}`}
-                          >
-                            <span className="msg-sender">{msg.senderName}</span>
-                            <p className="msg-text">{msg.text}</p>
-                            <span className="msg-time">
-                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </span>
+                          <div key={msg._id} className={`bubble-row ${isAdminMsg ? "admin" : "user"}`}>
+                            <div className={`message-bubble ${isAdminMsg ? "admin" : "user"}`}>
+                              {isAdminMsg && (
+                                <span className="msg-sender">Support Admin</span>
+                              )}
+                              <p className="msg-text">{msg.text}</p>
+                              <span className="msg-time">
+                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                            {!isAdminMsg && hasAdminReplied && (
+                              <span className="seen-label">✓✓ Seen</span>
+                            )}
                           </div>
                         );
                       })
@@ -449,11 +469,30 @@ export default function ContactPage() {
         }
 
         /* Message Bubbles */
+        .bubble-row {
+          display: flex;
+          flex-direction: column;
+        }
+        .bubble-row.user {
+          align-items: flex-end;
+        }
+        .bubble-row.admin {
+          align-items: flex-start;
+        }
+
+        .seen-label {
+          font-size: 0.62rem;
+          color: var(--accent-secondary);
+          font-weight: 700;
+          margin-top: 0.2rem;
+          letter-spacing: 0.02em;
+        }
+
         .message-bubble {
           display: flex;
           flex-direction: column;
           max-width: 75%;
-          padding: 0.75rem 1rem;
+          padding: 0.65rem 0.9rem;
           border-radius: var(--border-radius-md);
           font-size: 0.86rem;
           line-height: 1.5;
@@ -461,7 +500,6 @@ export default function ContactPage() {
         }
 
         .message-bubble.user {
-          align-self: flex-end;
           background: var(--accent-primary);
           color: white;
           border-bottom-right-radius: 2px;
@@ -476,19 +514,20 @@ export default function ContactPage() {
         }
 
         .msg-sender {
-          font-size: 0.68rem;
-          font-weight: 750;
-          opacity: 0.8;
-          margin-bottom: 0.2rem;
+          font-size: 0.65rem;
+          font-weight: 800;
+          opacity: 0.75;
+          margin-bottom: 0.15rem;
+          color: var(--accent-secondary);
         }
         .msg-text {
           word-break: break-word;
         }
         .msg-time {
           font-size: 0.6rem;
-          opacity: 0.6;
+          opacity: 0.55;
           text-align: right;
-          margin-top: 0.25rem;
+          margin-top: 0.3rem;
           align-self: flex-end;
         }
 

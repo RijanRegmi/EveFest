@@ -75,25 +75,42 @@ export default function AdminDashboardPage() {
     }
   }, [user]);
 
-  // Load appropriate data when tab changes
+  // Load appropriate data when tab changes (with polling for support tab)
   useEffect(() => {
-    if (user && user.role === "admin") {
-      if (activeTab === "users") {
-        getAdminUsers();
-      } else if (activeTab === "support") {
+    if (!user || user.role !== "admin") return;
+
+    if (activeTab === "users") {
+      getAdminUsers();
+      return;
+    }
+
+    if (activeTab === "support") {
+      getAdminThreads();
+      // Poll thread list every 5 seconds to show new conversations
+      const threadPoll = setInterval(() => {
         getAdminThreads();
-      }
+      }, 5000);
+      return () => clearInterval(threadPoll);
     }
   }, [activeTab, user]);
 
-  // Handle active support thread load
+  // Handle active support thread — load + poll every 3 seconds for real-time messages
   useEffect(() => {
-    if (activeThreadId) {
-      setLoadingMessages(true);
+    if (!activeThreadId) return;
+
+    // Initial load with spinner
+    setLoadingMessages(true);
+    getAdminThreadMessages(activeThreadId)
+      .then((msgs) => setThreadMessages(msgs))
+      .finally(() => setLoadingMessages(false));
+
+    // Silent background poll for new messages
+    const msgPoll = setInterval(() => {
       getAdminThreadMessages(activeThreadId)
-        .then((msgs) => setThreadMessages(msgs))
-        .finally(() => setLoadingMessages(false));
-    }
+        .then((msgs) => setThreadMessages(msgs));
+    }, 3000);
+
+    return () => clearInterval(msgPoll);
   }, [activeThreadId]);
 
   // Scroll to bottom on thread update
@@ -420,13 +437,27 @@ export default function AdminDashboardPage() {
                       ) : threadMessages.length === 0 ? (
                         <p className="empty-msgs">No messages in this chat.</p>
                       ) : (
-                        threadMessages.map((msg) => {
+                        threadMessages.map((msg, idx) => {
                           const isOwn = msg.senderId === user._id || msg.senderName.includes("Support Admin");
+                          const hasStudentReplied = isOwn && threadMessages
+                            .slice(idx + 1)
+                            .some(m => !(m.senderId === user._id || m.senderName.includes("Support Admin")));
+                          // seen = student has sent a message after this admin message (they've read it)
+                          const hasSeen = isOwn && threadMessages
+                            .slice(idx + 1)
+                            .some(m => !(m.senderId === user._id || m.senderName.includes("Support Admin")));
                           return (
-                            <div key={msg._id} className={`chat-bubble-wrapper ${isOwn ? "own" : "student"}`}>
-                              <span className="sender">{msg.senderName}</span>
-                              <p className="bubble-text">{msg.text}</p>
-                              <span className="time">{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                            <div key={msg._id} className={`admin-bubble-row ${isOwn ? "own" : "student"}`}>
+                              <div className={`chat-bubble-wrapper ${isOwn ? "own" : "student"}`}>
+                                {!isOwn && (
+                                  <span className="sender">{msg.senderName}</span>
+                                )}
+                                <p className="bubble-text">{msg.text}</p>
+                                <span className="time">{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                              </div>
+                              {isOwn && hasSeen && (
+                                <span className="admin-seen-label">✓✓ Seen</span>
+                              )}
                             </div>
                           );
                         })
@@ -643,10 +674,16 @@ export default function AdminDashboardPage() {
         .empty-msgs { text-align: center; color: var(--fg-tertiary); padding: 3rem 0; font-size: 0.84rem; }
 
         .chat-bubble-wrapper { display: flex; flex-direction: column; max-width: 75%; padding: 0.65rem 0.85rem; border-radius: var(--border-radius-md); font-size: 0.84rem; line-height: 1.45; }
-        .chat-bubble-wrapper.own { align-self: flex-end; background: var(--accent-primary); color: white; border-bottom-right-radius: 2px; }
+        .chat-bubble-wrapper.own { background: var(--accent-primary); color: white; border-bottom-right-radius: 2px; }
         .chat-bubble-wrapper.student { align-self: flex-start; background: var(--bg-tertiary); border: 1px solid var(--glass-border); color: var(--fg-primary); border-bottom-left-radius: 2px; }
         
-        .chat-bubble-wrapper .sender { font-size: 0.68rem; font-weight: 750; opacity: 0.8; margin-bottom: 0.15rem; }
+        .admin-bubble-row { display: flex; flex-direction: column; }
+        .admin-bubble-row.own { align-items: flex-end; }
+        .admin-bubble-row.student { align-items: flex-start; }
+        
+        .admin-seen-label { font-size: 0.62rem; color: var(--accent-secondary); font-weight: 700; margin-top: 0.2rem; letter-spacing: 0.02em; }
+        
+        .chat-bubble-wrapper .sender { font-size: 0.65rem; font-weight: 800; opacity: 0.8; margin-bottom: 0.15rem; color: var(--accent-secondary); }
         .chat-bubble-wrapper .time { font-size: 0.6rem; opacity: 0.6; text-align: right; margin-top: 0.2rem; align-self: flex-end; }
         
         .conversation-input-bar { padding: 1rem 1.25rem; border-top: 1px solid var(--glass-border); background: rgba(0,0,0,0.1); display: flex; gap: 0.75rem; align-items: center; }
