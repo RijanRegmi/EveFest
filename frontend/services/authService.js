@@ -102,3 +102,26 @@ export async function getProfileApi(token) {
     throw error;
   }
 }
+
+export async function checkAvailabilityApi(field, value) {
+  try {
+    return await request("/auth/check-availability", {
+      method: "POST",
+      body: { field, value },
+    });
+  } catch (error) {
+    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+      const users = getLocalUsers();
+      let isAvailable = true;
+      if (field === "username") {
+        isAvailable = !users.some((u) => u.username === value.toLowerCase());
+      } else if (field === "email") {
+        isAvailable = !users.some((u) => u.email === value.toLowerCase());
+      } else if (field === "phoneNumber") {
+        isAvailable = !users.some((u) => u.phoneNumber === value);
+      }
+      return { available: isAvailable };
+    }
+    throw error;
+  }
+}

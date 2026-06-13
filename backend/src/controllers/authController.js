@@ -42,3 +42,17 @@ export const getUserProfile = async (req, res, next) => {
     next(error);
   }
 };
+
+export const checkAvailability = async (req, res, next) => {
+  try {
+    const { field, value } = req.body;
+    if (!field || !value) {
+      return res.status(400).json({ message: "Field and value are required" });
+    }
+    const isAvailable = await authService.checkAvailability(field, value);
+    res.status(200).json({ available: isAvailable });
+  } catch (error) {
+    res.status(500);
+    next(error);
+  }
+};

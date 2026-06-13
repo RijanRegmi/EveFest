@@ -92,15 +92,13 @@ export default function AuthModal() {
           </button>
         </div>
 
-        {/* Info Banner for Demo */}
-        <div className="info-banner">
-          <Info size={16} className="info-icon" />
-          <span>
-            {authModal.tab === "login" 
-              ? "Tip: Enter any email & password to test, or create a new account." 
-              : "Register as a host to publish events and manage attendees."}
-          </span>
-        </div>
+        {/* Info Banner */}
+        {authModal.tab === "signup" && (
+          <div className="info-banner">
+            <Info size={16} className="info-icon" />
+            <span>Register as a host to publish events and manage attendees.</span>
+          </div>
+        )}
 
         {/* Error Notification */}
         {error && <div className="error-banner">{error}</div>}
@@ -285,7 +283,7 @@ export default function AuthModal() {
           align-items: center;
         }
         
-        .input-icon {
+        :global(.input-icon) {
           position: absolute;
           left: 14px;
           color: var(--fg-tertiary);

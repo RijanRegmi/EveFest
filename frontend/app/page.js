@@ -1,20 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppProvider, useApp } from "../context/AppContext";
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import EventCard from "../components/EventCard";
 import AuthModal from "../components/AuthModal";
-import EventForm from "../components/EventForm";
-import EventDetails from "../components/EventDetails";
 import Dashboard from "../components/Dashboard";
 import { Info, HelpCircle, Shield, Award, CalendarDays, Sparkles } from "lucide-react";
 
 function HomeContent() {
   const { events, loading } = useApp();
   const [currentView, setCurrentView] = useState("explore"); // 'explore' | 'dashboard'
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get("view");
+
+  useEffect(() => {
+    if (viewParam === "dashboard" || viewParam === "explore") {
+      setCurrentView(viewParam);
+    }
+  }, [viewParam]);
   
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,7 +113,7 @@ function HomeContent() {
                   <EventCard 
                     key={evt._id} 
                     event={evt} 
-                    onClick={() => setSelectedEvent(evt)} 
+                    onClick={() => router.push(`/event/${evt._id}`)} 
                   />
                 ))}
               </div>
@@ -159,14 +166,7 @@ function HomeContent() {
 
       {/* Shared Overlays & Modals */}
       <AuthModal />
-      <EventForm />
-      
-      {selectedEvent && (
-        <EventDetails 
-          event={selectedEvent} 
-          onClose={() => setSelectedEvent(null)} 
-        />
-      )}
+
 
       <footer className="footer-layout">
         <div className="container footer-container">

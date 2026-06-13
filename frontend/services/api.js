@@ -28,3 +28,48 @@ export async function request(endpoint, options = {}) {
 
   return response.json();
 }
+
+// For multipart/form-data uploads (images, files)
+export async function uploadRequest(endpoint, formData) {
+  const token = localStorage.getItem("token");
+
+  const headers = {
+    ...(token && { Authorization: `Bearer ${token}` }),
+    // Do NOT set Content-Type — browser sets it with boundary for multipart
+  };
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Upload error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// For multipart PUT requests (edit with optional file uploads)
+export async function uploadPutRequest(endpoint, formData) {
+  const token = localStorage.getItem("token");
+
+  const headers = {
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    method: "PUT",
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Update error: ${response.status}`);
+  }
+
+  return response.json();
+}

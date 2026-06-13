@@ -3,14 +3,20 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Sun, Moon, Calendar, User, LogOut, LayoutDashboard, PlusCircle } from "lucide-react";
 
 export default function Navbar({ currentView, setCurrentView }) {
   const { theme, toggleTheme, user, logout, setAuthModal } = useApp();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const router = useRouter();
 
   const handleNav = (view) => {
-    setCurrentView(view);
+    if (setCurrentView) {
+      setCurrentView(view);
+    } else {
+      router.push(`/?view=${view}`);
+    }
     setDropdownOpen(false);
   };
 
@@ -73,7 +79,7 @@ export default function Navbar({ currentView, setCurrentView }) {
                     My Dashboard
                   </button>
                   
-                  <button onClick={() => { handleNav("explore"); setAuthModal({ open: true, tab: "host" }); }} className="dropdown-item">
+                  <button onClick={() => { router.push("/host-event"); setDropdownOpen(false); }} className="dropdown-item">
                     <PlusCircle size={16} />
                     Host an Event
                   </button>

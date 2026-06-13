@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 import Link from "next/link";
-import { User, Mail, Phone, Lock, Key, ArrowLeft, Calendar, UserCheck, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { User, Mail, Phone, Lock, Key, ArrowLeft, Calendar, UserCheck, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
+import { checkAvailabilityApi } from "../../services/authService";
 
 export default function SignupPage() {
   const { register } = useApp();
@@ -19,6 +20,78 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [availability, setAvailability] = useState({
+    username: null,
+    email: null,
+    phoneNumber: null,
+  });
+  const [checking, setChecking] = useState({
+    username: false,
+    email: false,
+    phoneNumber: false,
+  });
+
+  // Independent debounced checks
+  useEffect(() => {
+    const checkUsername = async () => {
+      if (!formData.username || formData.username.length < 3) {
+        setAvailability((prev) => ({ ...prev, username: null }));
+        return;
+      }
+      setChecking((prev) => ({ ...prev, username: true }));
+      try {
+        const res = await checkAvailabilityApi("username", formData.username);
+        setAvailability((prev) => ({ ...prev, username: res.available }));
+      } catch (err) {
+        setAvailability((prev) => ({ ...prev, username: null }));
+      } finally {
+        setChecking((prev) => ({ ...prev, username: false }));
+      }
+    };
+    const timer = setTimeout(checkUsername, 600);
+    return () => clearTimeout(timer);
+  }, [formData.username]);
+
+  useEffect(() => {
+    const checkEmail = async () => {
+      if (!formData.email || !formData.email.includes("@")) {
+        setAvailability((prev) => ({ ...prev, email: null }));
+        return;
+      }
+      setChecking((prev) => ({ ...prev, email: true }));
+      try {
+        const res = await checkAvailabilityApi("email", formData.email);
+        setAvailability((prev) => ({ ...prev, email: res.available }));
+      } catch (err) {
+        setAvailability((prev) => ({ ...prev, email: null }));
+      } finally {
+        setChecking((prev) => ({ ...prev, email: false }));
+      }
+    };
+    const timer = setTimeout(checkEmail, 600);
+    return () => clearTimeout(timer);
+  }, [formData.email]);
+
+  useEffect(() => {
+    const checkPhone = async () => {
+      if (!formData.phoneNumber || formData.phoneNumber.replace(/\D/g, "").length < 7) {
+        setAvailability((prev) => ({ ...prev, phoneNumber: null }));
+        return;
+      }
+      setChecking((prev) => ({ ...prev, phoneNumber: true }));
+      try {
+        const res = await checkAvailabilityApi("phoneNumber", formData.phoneNumber);
+        setAvailability((prev) => ({ ...prev, phoneNumber: res.available }));
+      } catch (err) {
+        setAvailability((prev) => ({ ...prev, phoneNumber: null }));
+      } finally {
+        setChecking((prev) => ({ ...prev, phoneNumber: false }));
+      }
+    };
+    const timer = setTimeout(checkPhone, 600);
+    return () => clearTimeout(timer);
+  }, [formData.phoneNumber]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -161,7 +234,7 @@ export default function SignupPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Unique Username</label>
+                <label className="form-label">Username</label>
                 <div className="input-with-icon">
                   <UserCheck size={18} className="input-icon" />
                   <input
@@ -170,10 +243,25 @@ export default function SignupPage() {
                     value={formData.username}
                     onChange={handleChange}
                     placeholder="johndoe_12"
-                    className="form-control"
+                    className={`form-control ${
+                      availability.username === false ? "input-error" : ""
+                    } ${availability.username === true ? "input-success" : ""}`}
                     required
                   />
+                  {checking.username && <div className="status-indicator spinner" />}
+                  {!checking.username && availability.username === true && (
+                    <CheckCircle2 size={18} className="status-indicator text-success" />
+                  )}
+                  {!checking.username && availability.username === false && (
+                    <XCircle size={18} className="status-indicator text-danger" />
+                  )}
                 </div>
+                {!checking.username && availability.username === false && (
+                  <span className="availability-text text-danger">Username already exists</span>
+                )}
+                {!checking.username && availability.username === true && (
+                  <span className="availability-text text-success">Username is available</span>
+                )}
               </div>
 
               <div className="form-group">
@@ -186,10 +274,25 @@ export default function SignupPage() {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="name@university.edu"
-                    className="form-control"
+                    className={`form-control ${
+                      availability.email === false ? "input-error" : ""
+                    } ${availability.email === true ? "input-success" : ""}`}
                     required
                   />
+                  {checking.email && <div className="status-indicator spinner" />}
+                  {!checking.email && availability.email === true && (
+                    <CheckCircle2 size={18} className="status-indicator text-success" />
+                  )}
+                  {!checking.email && availability.email === false && (
+                    <XCircle size={18} className="status-indicator text-danger" />
+                  )}
                 </div>
+                {!checking.email && availability.email === false && (
+                  <span className="availability-text text-danger">Email already exists</span>
+                )}
+                {!checking.email && availability.email === true && (
+                  <span className="availability-text text-success">Email is available</span>
+                )}
               </div>
 
               <div className="form-group">
@@ -202,10 +305,25 @@ export default function SignupPage() {
                     value={formData.phoneNumber}
                     onChange={handleChange}
                     placeholder="+1 (555) 123-4567"
-                    className="form-control"
+                    className={`form-control ${
+                      availability.phoneNumber === false ? "input-error" : ""
+                    } ${availability.phoneNumber === true ? "input-success" : ""}`}
                     required
                   />
+                  {checking.phoneNumber && <div className="status-indicator spinner" />}
+                  {!checking.phoneNumber && availability.phoneNumber === true && (
+                    <CheckCircle2 size={18} className="status-indicator text-success" />
+                  )}
+                  {!checking.phoneNumber && availability.phoneNumber === false && (
+                    <XCircle size={18} className="status-indicator text-danger" />
+                  )}
                 </div>
+                {!checking.phoneNumber && availability.phoneNumber === false && (
+                  <span className="availability-text text-danger">Phone number already exists</span>
+                )}
+                {!checking.phoneNumber && availability.phoneNumber === true && (
+                  <span className="availability-text text-success">Phone number is available</span>
+                )}
               </div>
 
               <div className="form-row">
@@ -464,13 +582,13 @@ export default function SignupPage() {
 
         .form-content {
           width: 100%;
-          max-width: 440px;
+          max-width: 520px;
           margin: auto 0;
         }
 
         /* Card Container boundary: tightly padded to fit 100% height nicely */
         .form-card {
-          padding: 1.75rem 2.25rem;
+          padding: 2.5rem 3rem;
           border-radius: var(--border-radius-lg);
           background: var(--glass-bg);
           border: 1px solid var(--glass-border);
@@ -478,7 +596,7 @@ export default function SignupPage() {
         }
 
         .auth-title {
-          font-size: 1.6rem;
+          font-size: 1.8rem;
           font-weight: 850;
           letter-spacing: -0.5px;
           margin-bottom: 0.25rem;
@@ -486,9 +604,9 @@ export default function SignupPage() {
         }
 
         .auth-subtitle {
-          font-size: 0.85rem;
+          font-size: 0.95rem;
           color: var(--fg-secondary);
-          margin-bottom: 1.15rem;
+          margin-bottom: 1.5rem;
           line-height: 1.4;
         }
 
@@ -503,18 +621,17 @@ export default function SignupPage() {
           margin-bottom: 1rem;
         }
 
-        /* Form layout - No scrollbars! */
         .auth-form {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 2rem;
         }
 
         .form-group {
           margin-bottom: 0px;
           display: flex;
           flex-direction: column;
-          gap: 0.45rem;
+          gap: 0.65rem;
         }
 
         .form-row {
@@ -529,7 +646,7 @@ export default function SignupPage() {
           align-items: center;
         }
         
-        .input-icon {
+        :global(.input-icon) {
           position: absolute;
           left: 14px;
           color: var(--fg-tertiary);
@@ -558,6 +675,37 @@ export default function SignupPage() {
         }
         .password-toggle:hover {
           color: var(--fg-primary);
+        }
+
+        /* Status Indicators & Texts */
+        :global(.status-indicator) {
+          position: absolute;
+          right: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        :global(.text-success) { color: #10b981; }
+        :global(.text-danger) { color: #ef4444; }
+        .input-success { border-color: #10b981 !important; }
+        .input-error { border-color: #ef4444 !important; }
+        
+        .availability-text {
+          font-size: 0.75rem;
+          font-weight: 600;
+          margin-top: -0.2rem;
+          margin-left: 0.25rem;
+        }
+        .spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid var(--glass-border);
+          border-top-color: var(--accent-primary);
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
         .submit-btn {

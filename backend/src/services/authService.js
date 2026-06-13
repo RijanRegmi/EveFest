@@ -79,3 +79,16 @@ export const getUserProfile = async (userId) => {
   }
   return user;
 };
+
+export const checkAvailability = async (field, value) => {
+  const query = {};
+  // If the field is username or email, do a case-insensitive check
+  if (field === "username" || field === "email") {
+    query[field] = value.toLowerCase();
+  } else {
+    query[field] = value;
+  }
+  
+  const user = await User.findOne(query);
+  return !user; // true if available, false if taken
+};

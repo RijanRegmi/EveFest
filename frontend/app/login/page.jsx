@@ -110,12 +110,6 @@ export default function LoginPage() {
             <h1 className="auth-title">Welcome Back</h1>
             <p className="auth-subtitle">Sign in to book passes, explore clubs, and host events.</p>
 
-            {/* Info Tip Banner */}
-            <div className="info-banner">
-              <Info size={14} className="info-icon" />
-              <span>Test credentials: Enter any email to log in.</span>
-            </div>
-
             {error && <div className="error-banner">{error}</div>}
 
             <form onSubmit={handleSubmit} className="auth-form">
@@ -437,7 +431,7 @@ export default function LoginPage() {
           align-items: center;
         }
         
-        .input-icon {
+        :global(.input-icon) {
           position: absolute;
           left: 14px;
           color: var(--fg-tertiary);

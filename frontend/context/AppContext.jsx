@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { fetchEvents, createEventApi, bookEventApi, cancelBookingApi } from "@/services/eventService";
+import { fetchEvents, createEventApi, bookEventApi, cancelBookingApi, updateEventApi, deleteEventApi } from "@/services/eventService";
 import { loginApi, registerApi, getProfileApi } from "@/services/authService";
 
 const AppContext = createContext();
@@ -11,7 +11,41 @@ export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [events, setEvents] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [chatMessages, setChatMessages] = useState({}); // { eventId: [messages] }
+  
+  const [chatMessages, setChatMessages] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return JSON.parse(localStorage.getItem("evefest_chat_messages") || "{}");
+      } catch (e) {
+        return {};
+      }
+    }
+    return {};
+  });
+
+  const [directMessages, setDirectMessages] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return JSON.parse(localStorage.getItem("evefest_direct_messages") || "[]");
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("evefest_chat_messages", JSON.stringify(chatMessages));
+    }
+  }, [chatMessages]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("evefest_direct_messages", JSON.stringify(directMessages));
+    }
+  }, [directMessages]);
+
   const [authModal, setAuthModal] = useState({ open: false, tab: "login" });
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState([]);
@@ -197,6 +231,39 @@ export function AppProvider({ children }) {
     }
   };
 
+  // 5b. Update event actions
+  const updateEvent = async (eventId, eventForm) => {
+    if (!user) {
+      window.location.href = "/login";
+      return false;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const updatedEvt = await updateEventApi(eventId, eventForm, token);
+      setEvents((prev) => prev.map((e) => (e._id === eventId ? updatedEvt : e)));
+      showToast("Event updated successfully!");
+      return true;
+    } catch (error) {
+      showToast(error.message || "Failed to update event.", "error");
+      return false;
+    }
+  };
+
+  // 5c. Delete event
+  const deleteEvent = async (eventId) => {
+    if (!user) return false;
+    try {
+      const token = localStorage.getItem("token");
+      await deleteEventApi(eventId, token);
+      setEvents((prev) => prev.filter((e) => e._id !== eventId));
+      showToast("Event deleted.", "success");
+      return true;
+    } catch (error) {
+      showToast(error.message || "Failed to delete event.", "error");
+      return false;
+    }
+  };
+
   // 6. Group Chat Room actions
   const sendChatMessage = (eventId, text) => {
     if (!user) return;
@@ -213,33 +280,24 @@ export function AppProvider({ children }) {
       const current = prev[eventId] || [];
       return { ...prev, [eventId]: [...current, newMessage] };
     });
+  };
 
-    // Simulate another attendee responding after 2-3 seconds for demo richness
-    setTimeout(() => {
-      const replies = [
-        "Hey! Super excited for this event!",
-        "Thanks for organizing, does anyone want to carpool?",
-        "Will this be recorded? Just in case.",
-        "Can't wait to see everyone there!",
-        "Is there any pre-reading material we need?",
-      ];
-      const botUsers = ["Alex Chen", "Sophia Patel", "Marcus Wong", "Elena Rostova"];
-      const randomReply = replies[Math.floor(Math.random() * replies.length)];
-      const randomUser = botUsers[Math.floor(Math.random() * botUsers.length)];
-      
-      const botMessage = {
-        id: Date.now() + 1,
-        sender: randomUser,
-        senderId: "mock-bot-id",
-        text: randomReply,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
+  // 7. Direct Messages (Support Chat)
+  const sendDirectMessage = (eventId, attendeeId, attendeeName, text) => {
+    if (!user) return;
 
-      setChatMessages((prevChats) => {
-        const currentChats = prevChats[eventId] || [];
-        return { ...prevChats, [eventId]: [...currentChats, botMessage] };
-      });
-    }, 2000);
+    const newMessage = {
+      id: Date.now(),
+      eventId,
+      attendeeId,
+      attendeeName,
+      senderId: user._id,
+      senderName: user.name,
+      text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setDirectMessages((prev) => [...prev, newMessage]);
   };
 
   return (
@@ -252,6 +310,7 @@ export function AppProvider({ children }) {
         setEvents,
         bookings,
         chatMessages,
+        directMessages,
         authModal,
         setAuthModal,
         loading,
@@ -263,7 +322,10 @@ export function AppProvider({ children }) {
         bookEvent,
         cancelBooking,
         hostEvent,
+        updateEvent,
+        deleteEvent,
         sendChatMessage,
+        sendDirectMessage,
         refreshData: loadInitialData,
       }}
     >

@@ -2,10 +2,12 @@
 
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { Ticket, ShieldAlert, Users, Calendar, MapPin, QrCode, Download, Trash2, ShieldCheck, UserCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Ticket, ShieldAlert, Users, Calendar, MapPin, QrCode, Download, Trash2, ShieldCheck, UserCheck, Edit, X } from "lucide-react";
 
 export default function Dashboard() {
-  const { user, events, setEvents, bookings, cancelBooking, showToast } = useApp();
+  const { user, events, setEvents, bookings, cancelBooking, showToast, deleteEvent } = useApp();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("tickets"); // 'tickets' | 'hosted'
   const [attendeeModal, setAttendeeModal] = useState({ open: false, eventId: null });
 
@@ -18,10 +20,9 @@ export default function Dashboard() {
     }
   };
 
-  const handleDeleteEvent = (eventId) => {
-    if (window.confirm("Are you sure you want to cancel/delete this event? This action is permanent.")) {
-      setEvents((prev) => prev.filter((e) => e._id !== eventId));
-      showToast("Event cancelled and removed.");
+  const handleDeleteEvent = async (eventId) => {
+    if (window.confirm("Are you sure you want to permanently delete this event? This action cannot be undone.")) {
+      await deleteEvent(eventId);
     }
   };
 
@@ -81,7 +82,13 @@ export default function Dashboard() {
                   {/* Left Side: Ticket Meta */}
                   <div className="ticket-details-side">
                     <span className="ticket-status-badge">{booking.paymentStatus}</span>
-                    <h3 className="ticket-event-title">{booking.event.title}</h3>
+                    <h3 
+                      className="ticket-event-title cursor-pointer" 
+                      onClick={() => window.location.href = `/event/${booking.event._id}?view=dashboard`}
+                      title="View Event Details & Interactive Map"
+                    >
+                      {booking.event.title}
+                    </h3>
                     
                     <div className="ticket-meta-info">
                       <div className="ticket-meta-item">
@@ -188,10 +195,17 @@ export default function Dashboard() {
                         </td>
                         <td>
                           <div className="table-actions">
+                            <button
+                              className="btn btn-secondary btn-icon-small edit-action-btn"
+                              onClick={() => router.push(`/edit-event/${evt._id}`)}
+                              title="Edit Event"
+                            >
+                              <Edit size={14} />
+                            </button>
                             <button 
                               className="btn btn-secondary btn-icon-small delete-btn"
                               onClick={() => handleDeleteEvent(evt._id)}
-                              title="Cancel Event"
+                              title="Delete Event"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -337,6 +351,11 @@ export default function Dashboard() {
           font-size: 1.25rem;
           font-weight: 800;
           color: var(--fg-primary);
+          cursor: pointer;
+          transition: var(--transition-fast);
+        }
+        .ticket-event-title:hover {
+          color: var(--accent-primary);
         }
         
         .ticket-meta-info {
@@ -682,6 +701,29 @@ export default function Dashboard() {
             justify-content: space-around;
             padding: 1.25rem;
           }
+        .table-actions {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+        }
+        .btn-icon-small {
+          padding: 0.35rem 0.6rem;
+          border-radius: var(--border-radius-sm);
+          font-size: 0.8rem;
+        }
+        .edit-action-btn {
+          color: var(--accent-primary);
+          border-color: var(--accent-primary);
+        }
+        .edit-action-btn:hover {
+          background: rgba(99, 102, 241, 0.1);
+        }
+        .delete-btn {
+          color: var(--color-danger);
+          border-color: var(--color-danger);
+        }
+        .delete-btn:hover {
+          background: rgba(239, 68, 68, 0.1);
         }
       `}</style>
     </div>

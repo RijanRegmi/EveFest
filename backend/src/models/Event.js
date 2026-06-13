@@ -70,6 +70,22 @@ const eventSchema = new mongoose.Schema(
       type: String, // filename of uploaded document
       default: null,
     },
+    rules: {
+      type: String, // event rules / code of conduct
+      default: "",
+    },
+    logo: {
+      type: String, // URL to event/organizer logo
+      default: "",
+    },
+    isTakedown: {
+      type: Boolean,
+      default: false,
+    },
+    takedownReason: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,

@@ -4,6 +4,15 @@ import React from "react";
 import { Calendar, MapPin, Tv, Users, ArrowRight } from "lucide-react";
 
 export default function EventCard({ event, onClick }) {
+  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000";
+
+  // Resolve image URL - handles both absolute URLs and relative backend paths
+  const resolveImageUrl = (url) => {
+    if (!url) return "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=800&auto=format&fit=crop";
+    if (url.startsWith("http") || url.startsWith("blob:") || url.startsWith("/")) return url;
+    return `${BACKEND_URL}${url}`;
+  };
+
   // Format Date helpers
   const eventDate = new Date(event.date);
   const monthStr = eventDate.toLocaleString("en-US", { month: "short" }).toUpperCase();
@@ -21,7 +30,7 @@ export default function EventCard({ event, onClick }) {
     <div className={`event-card glass-panel ${isSoldOut ? "sold-out" : ""}`} onClick={onClick}>
       {/* Image Banner */}
       <div className="card-banner">
-        <img src={event.image} alt={event.title} className="banner-img" loading="lazy" />
+        <img src={resolveImageUrl(event.image)} alt={event.title} className="banner-img" loading="lazy" />
         
         {/* Date Box overlay */}
         <div className="date-badge">

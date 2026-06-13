@@ -12,12 +12,6 @@ export const createBooking = async (eventId, userId, paymentDetails) => {
     throw new Error("This event is fully booked");
   }
 
-  // 2. Duplicate Validation
-  const alreadyBooked = await Booking.findOne({ user: userId, event: eventId });
-  if (alreadyBooked) {
-    throw new Error("You have already booked a ticket for this event");
-  }
-
   // 3. Paid Event Verification
   if (event.price > 0 && !paymentDetails) {
     throw new Error("Payment details are required for paid events");
