@@ -271,25 +271,6 @@ export default function Navbar({ currentView, setCurrentView }) {
           align-items: center;
           gap: 1.25rem;
         }
-        :global(.nav-link) {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.95rem;
-          font-weight: 600;
-          color: var(--fg-secondary);
-          padding: 0.5rem 1rem;
-          border-radius: var(--border-radius-sm);
-          transition: var(--transition-fast);
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          font-family: inherit;
-        }
-        :global(.nav-link:hover), :global(.nav-link.active) {
-          color: var(--accent-primary) !important;
-          background: rgba(99, 102, 241, 0.08) !important;
-        }
         .user-dropdown-container {
           position: relative;
         }
@@ -389,67 +370,8 @@ export default function Navbar({ currentView, setCurrentView }) {
           box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
         }
         
-        :global(.nav-link.active) {
-          background: rgba(99, 102, 241, 0.15) !important;
-          box-shadow: 0 0 10px rgba(99, 102, 241, 0.15) !important;
-        }
-
         .mobile-menu-toggle {
           display: none;
-        }
-
-        /* Mobile drawer styles */
-        .mobile-menu-drawer {
-          position: absolute;
-          top: 75px;
-          left: 1rem;
-          right: 1rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-          padding: 1rem;
-          border-radius: var(--border-radius-md);
-          z-index: 999; /* Enforce top layer visibility */
-          box-shadow: var(--shadow-lg), 0 20px 40px rgba(0, 0, 0, 0.15);
-          background: rgba(255, 255, 255, 0.75) !important; /* Semi-transparent in light mode for blur effect */
-          border: 1px solid rgba(0, 0, 0, 0.1);
-          backdrop-filter: blur(24px) !important;
-          -webkit-backdrop-filter: blur(24px) !important;
-        }
-
-        :global(.dark) .mobile-menu-drawer {
-          background: rgba(18, 18, 20, 0.75) !important; /* Semi-transparent in dark mode for blur effect */
-          border: 1px solid rgba(255, 255, 255, 0.08) !important;
-          box-shadow: var(--shadow-lg), 0 20px 40px rgba(0, 0, 0, 0.5) !important;
-        }
-
-        :global(.mobile-nav-link) {
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-          font-size: 0.95rem;
-          font-weight: 600;
-          color: var(--fg-secondary);
-          padding: 0.65rem 1rem;
-          border-radius: var(--border-radius-sm);
-          text-align: left;
-          width: 100%;
-          transition: var(--transition-fast);
-          box-sizing: border-box;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          font-family: inherit;
-          margin: 0;
-        }
-
-        :global(.mobile-nav-link:hover), :global(.mobile-nav-link.active) {
-          color: var(--accent-primary) !important;
-          background: rgba(99, 102, 241, 0.08) !important;
-        }
-
-        :global(.mobile-nav-link.active) {
-          background: rgba(99, 102, 241, 0.15) !important;
         }
         
         @media (max-width: 768px) {

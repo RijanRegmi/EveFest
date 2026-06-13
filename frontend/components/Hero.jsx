@@ -11,15 +11,33 @@ export default function Hero({
   filterOnline, 
   setFilterOnline,
   filterPrice,
-  setFilterPrice
+  setFilterPrice,
+  events = []
 }) {
-  const categories = [
-    { name: "All", icon: <Layers size={15} /> },
-    { name: "Technology", icon: <Compass size={15} /> },
-    { name: "Music", icon: <Compass size={15} /> }, // fallback or matching icon
-    { name: "Design", icon: <Compass size={15} /> },
-    { name: "Arts", icon: <Compass size={15} /> }
-  ];
+  // Only show categories that actually have events — avoids tab overflow from empty static categories
+  const eventCategories = Array.from(new Set(events.map(e => e.category).filter(Boolean)));
+  const allCategoryNames = ["All", ...eventCategories];
+
+  const categoryIcons = {
+    "All": <Layers size={15} />,
+    "Sports": <Compass size={15} />,
+    "Technology": <Compass size={15} />,
+    "Music": <Compass size={15} />,
+    "Design": <Compass size={15} />,
+    "Arts": <Compass size={15} />,
+    "Workshop": <BookOpen size={15} />,
+    "Hackathon": <Compass size={15} />,
+    "Conference": <Compass size={15} />,
+    "Social": <Compass size={15} />,
+    "Gaming": <Compass size={15} />,
+    "Health": <Compass size={15} />,
+    "Education": <BookOpen size={15} />,
+  };
+
+  const categories = allCategoryNames.map(name => ({
+    name,
+    icon: categoryIcons[name] || <Compass size={15} />
+  }));
 
   return (
     <section className="hero-section">

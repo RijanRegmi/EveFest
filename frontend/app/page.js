@@ -71,6 +71,7 @@ function HomeContent() {
             setFilterOnline={setFilterOnline}
             filterPrice={filterPrice}
             setFilterPrice={setFilterPrice}
+            events={events}
           />
 
           {/* Events Grid Section */}

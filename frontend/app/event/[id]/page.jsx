@@ -51,7 +51,9 @@ function EventDetailPageContent() {
   const resolveImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http") || url.startsWith("blob:")) return url;
-    return `${BACKEND_URL}${url}`;
+    const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+    const cleanBackend = BACKEND_URL.endsWith("/") ? BACKEND_URL.slice(0, -1) : BACKEND_URL;
+    return `${cleanBackend}${cleanUrl}`;
   };
 
   const [event, setEvent] = useState(null);
@@ -65,6 +67,89 @@ function EventDetailPageContent() {
   const [checkoutData, setCheckoutData] = useState({ cardNum: "", expiry: "", cvv: "" });
   const [checkoutError, setCheckoutError] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
+
+  // Check registration status - hooks and variables moved to top to prevent Rules of Hooks violations
+  const userEventBookings = event ? bookings.filter(
+    (b) => b.event?._id === event._id || b.event === event._id
+  ) : [];
+  const isRegistered = userEventBookings.length > 0;
+  const [activeTicketIndex, setActiveTicketIndex] = useState(0);
+  const activeBooking = userEventBookings[activeTicketIndex] || userEventBookings[0] || null;
+  const qrCanvasRef = useRef(null);
+
+  // QR Code drawing logic
+  useEffect(() => {
+    if (!qrCanvasRef.current || !activeBooking) return;
+    const canvas = qrCanvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const size = canvas.width;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, size, size);
+    
+    // Pseudo QR Code deterministic random seeding from ticketCode
+    const code = activeBooking.ticketCode || "TICKET-SAMPLE";
+    let hash = 0;
+    for (let i = 0; i < code.length; i++) {
+      hash = code.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // 15x15 grid
+    const gridSize = 15;
+    const cellSize = size / gridSize;
+    
+    // Draw background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+    
+    // Corner patterns helper
+    const drawFinderPattern = (x, y) => {
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(x * cellSize, y * cellSize, 7 * cellSize, 7 * cellSize);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 5 * cellSize, 5 * cellSize);
+      ctx.fillStyle = "#000000";
+      ctx.fillRect((x + 2) * cellSize, (y + 2) * cellSize, 3 * cellSize, 3 * cellSize);
+    };
+    
+    // Helper to check if coordinate is inside corner patterns
+    const isFinder = (r, c) => {
+      if (r < 7 && c < 7) return true;
+      if (r < 7 && c >= gridSize - 7) return true;
+      if (r >= gridSize - 7 && c < 7) return true;
+      return false;
+    };
+    
+    // Draw finder patterns
+    drawFinderPattern(0, 0);
+    drawFinderPattern(gridSize - 7, 0);
+    drawFinderPattern(0, gridSize - 7);
+    
+    // Draw random data block
+    ctx.fillStyle = "#000000";
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        if (isFinder(r, c)) continue;
+        const val = Math.sin(hash + r * 13.5 + c * 37.7) * 10000;
+        const isFilled = (val - Math.floor(val)) > 0.48;
+        if (isFilled) {
+          ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+  }, [activeBooking]);
+
+  // Handle activeTicketIndex safety bounds when bookings change
+  useEffect(() => {
+    if (activeTicketIndex >= userEventBookings.length) {
+      setActiveTicketIndex(Math.max(0, userEventBookings.length - 1));
+    }
+  }, [userEventBookings.length, activeTicketIndex]);
+
+  // Scroll to top on page load/navigation
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [id]);
 
   // Fetch event details on mount/ID change
   useEffect(() => {
@@ -227,89 +312,11 @@ function EventDetailPageContent() {
     );
   }
 
-  // Check registration status
-  const userEventBookings = bookings.filter(
-    (b) => b.event?._id === event._id || b.event === event._id
-  );
-  const isRegistered = userEventBookings.length > 0;
-  const [activeTicketIndex, setActiveTicketIndex] = useState(0);
-  const activeBooking = userEventBookings[activeTicketIndex] || userEventBookings[0] || null;
-  const qrCanvasRef = useRef(null);
-
   const isHost = user && event && (
     user._id === event.hostId ||
     user._id === event.hostId?._id ||
     user._id === event.hostId?.toString()
   );
-
-  // QR Code drawing logic
-  useEffect(() => {
-    if (!qrCanvasRef.current || !activeBooking) return;
-    const canvas = qrCanvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const size = canvas.width;
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, size, size);
-    
-    // Pseudo QR Code deterministic random seeding from ticketCode
-    const code = activeBooking.ticketCode || "TICKET-SAMPLE";
-    let hash = 0;
-    for (let i = 0; i < code.length; i++) {
-      hash = code.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    // 15x15 grid
-    const gridSize = 15;
-    const cellSize = size / gridSize;
-    
-    // Draw background
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, size, size);
-    
-    // Corner patterns helper
-    const drawFinderPattern = (x, y) => {
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(x * cellSize, y * cellSize, 7 * cellSize, 7 * cellSize);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 5 * cellSize, 5 * cellSize);
-      ctx.fillStyle = "#000000";
-      ctx.fillRect((x + 2) * cellSize, (y + 2) * cellSize, 3 * cellSize, 3 * cellSize);
-    };
-    
-    // Helper to check if coordinate is inside corner patterns
-    const isFinder = (r, c) => {
-      if (r < 7 && c < 7) return true;
-      if (r < 7 && c >= gridSize - 7) return true;
-      if (r >= gridSize - 7 && c < 7) return true;
-      return false;
-    };
-    
-    // Draw finder patterns
-    drawFinderPattern(0, 0);
-    drawFinderPattern(gridSize - 7, 0);
-    drawFinderPattern(0, gridSize - 7);
-    
-    // Draw random data block
-    ctx.fillStyle = "#000000";
-    for (let r = 0; r < gridSize; r++) {
-      for (let c = 0; c < gridSize; c++) {
-        if (isFinder(r, c)) continue;
-        const val = Math.sin(hash + r * 13.5 + c * 37.7) * 10000;
-        const isFilled = (val - Math.floor(val)) > 0.48;
-        if (isFilled) {
-          ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
-        }
-      }
-    }
-  }, [activeBooking]);
-
-  // Handle activeTicketIndex safety bounds when bookings change
-  useEffect(() => {
-    if (activeTicketIndex >= userEventBookings.length) {
-      setActiveTicketIndex(Math.max(0, userEventBookings.length - 1));
-    }
-  }, [userEventBookings.length, activeTicketIndex]);
 
   // Pricing & Capacity Details
   const isUnlimited = event.limit === "unlimited" || !event.limit;

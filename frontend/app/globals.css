@@ -282,3 +282,87 @@ input, select, textarea {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Navbar & Mobile Navigation Menu Global Styles */
+.nav-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: var(--fg-secondary) !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: var(--border-radius-sm) !important;
+  transition: var(--transition-fast) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
+}
+
+.nav-link:hover, .nav-link.active {
+  color: var(--accent-primary) !important;
+  background: rgba(99, 102, 241, 0.08) !important;
+}
+
+.nav-link.active {
+  background: rgba(99, 102, 241, 0.15) !important;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Mobile drawer styles */
+.mobile-menu-drawer {
+  position: absolute !important;
+  top: 75px !important;
+  left: 1rem !important;
+  right: 1rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  padding: 1rem !important;
+  border-radius: var(--border-radius-md) !important;
+  z-index: 999 !important; /* Enforce top layer visibility */
+  box-shadow: var(--shadow-lg), 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+  background: rgba(255, 255, 255, 0.75) !important; /* Semi-transparent in light mode for blur effect */
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+}
+
+.dark .mobile-menu-drawer {
+  background: rgba(18, 18, 20, 0.75) !important; /* Semi-transparent in dark mode for blur effect */
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: var(--shadow-lg), 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+.mobile-nav-link {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: var(--fg-secondary) !important;
+  padding: 0.65rem 1rem !important;
+  border-radius: var(--border-radius-sm) !important;
+  text-align: left !important;
+  width: 100% !important;
+  transition: var(--transition-fast) !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  margin: 0 !important;
+  text-decoration: none !important;
+}
+
+.mobile-nav-link:hover, .mobile-nav-link.active {
+  color: var(--accent-primary) !important;
+  background: rgba(99, 102, 241, 0.08) !important;
+}
+
+.mobile-nav-link.active {
+  background: rgba(99, 102, 241, 0.15) !important;
+}

@@ -12,8 +12,10 @@ export default function EventCard({ event, onClick }) {
   // Resolve image URL - handles both absolute URLs and relative backend paths
   const resolveImageUrl = (url) => {
     if (!url) return "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=800&auto=format&fit=crop";
-    if (url.startsWith("http") || url.startsWith("blob:") || url.startsWith("/")) return url;
-    return `${BACKEND_URL}${url}`;
+    if (url.startsWith("http") || url.startsWith("blob:")) return url;
+    const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+    const cleanBackend = BACKEND_URL.endsWith("/") ? BACKEND_URL.slice(0, -1) : BACKEND_URL;
+    return `${cleanBackend}${cleanUrl}`;
   };
 
   // Format Date helpers
@@ -35,6 +37,9 @@ export default function EventCard({ event, onClick }) {
       <div className="card-banner">
         <img src={resolveImageUrl(event.image)} alt={event.title} className="banner-img" loading="lazy" />
         
+        {/* Gradient overlay for better badge readability */}
+        <div className="banner-gradient" />
+
         {isBooked && (
           <div className="booked-badge" style={{ position: "absolute", top: "12px", right: "12px", background: "rgba(16, 185, 129, 0.85)", color: "white", fontSize: "0.72rem", fontWeight: "800", padding: "0.25rem 0.65rem", borderRadius: "var(--border-radius-sm)", border: "1px solid rgba(16, 185, 129, 0.35)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", gap: "0.25rem", zIndex: 5 }}>
             <ShieldCheck size={12} />
@@ -42,7 +47,7 @@ export default function EventCard({ event, onClick }) {
           </div>
         )}
 
-        {/* Date Box overlay */}
+        {/* Date Box overlay - top-left, prominent */}
         <div className="date-badge">
           <span className="date-month">{monthStr}</span>
           <span className="date-day">{dayStr}</span>
@@ -56,9 +61,24 @@ export default function EventCard({ event, onClick }) {
 
       {/* Card Body */}
       <div className="card-body">
+        {/* Host info row: logo + name */}
+        <div className="host-info-row">
+          {event.logo ? (
+            <img
+              src={resolveImageUrl(event.logo)}
+              alt={`${event.hostName} logo`}
+              className="host-logo-thumb"
+            />
+          ) : (
+            <div className="host-avatar-thumb">
+              {event.hostName?.charAt(0)?.toUpperCase() || "?"}
+            </div>
+          )}
+          <p className="event-host">Hosted by {event.hostName}</p>
+        </div>
+
         {/* Title */}
         <h3 className="event-title">{event.title}</h3>
-        <p className="event-host">Hosted by {event.hostName}</p>
 
         {/* Event Meta Details */}
         <div className="meta-list">
@@ -123,75 +143,125 @@ export default function EventCard({ event, onClick }) {
         
         .card-banner {
           position: relative;
-          height: 180px;
+          height: 190px;
           overflow: hidden;
           width: 100%;
+        }
+        
+        .banner-gradient {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            to bottom,
+            rgba(0,0,0,0.35) 0%,
+            transparent 45%,
+            transparent 60%,
+            rgba(0,0,0,0.4) 100%
+          );
+          z-index: 1;
+          pointer-events: none;
         }
         
         .banner-img {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          transition: var(--transition-smooth);
+          transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          transform-origin: center center;
         }
         
         .event-card:hover .banner-img {
-          transform: scale(1.06);
+          transform: scale(1.1);
         }
         
         /* Badges Overlay */
         .date-badge {
           position: absolute;
-          top: 12px;
-          left: 12px;
-          background: rgba(255, 255, 255, 0.9);
+          top: 10px;
+          left: 10px;
+          background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
           border-radius: var(--border-radius-sm);
-          padding: 0.4rem 0.65rem;
+          padding: 0.45rem 0.75rem;
           display: flex;
           flex-direction: column;
           align-items: center;
           line-height: 1;
-          box-shadow: var(--shadow-sm);
-          border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-        
-        .dark .date-badge {
-          background: rgba(18, 18, 20, 0.9);
-          border-color: rgba(255, 255, 255, 0.05);
+          box-shadow: 0 3px 12px rgba(99, 102, 241, 0.5);
+          border: none;
+          z-index: 2;
+          min-width: 46px;
         }
         
         .date-month {
           font-size: 0.65rem;
-          font-weight: 800;
-          color: var(--accent-primary);
+          font-weight: 900;
+          color: rgba(255, 255, 255, 0.9);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
         }
         
         .date-day {
-          font-size: 1.15rem;
-          font-weight: 850;
-          color: var(--fg-primary);
-          margin-top: 2px;
+          font-size: 1.45rem;
+          font-weight: 900;
+          color: #ffffff;
+          margin-top: 1px;
+          line-height: 1;
+          text-shadow: 0 1px 4px rgba(0,0,0,0.25);
         }
         
         .category-badge {
           position: absolute;
-          bottom: 12px;
-          right: 12px;
+          bottom: 10px;
+          right: 10px;
           background: var(--accent-primary);
           color: white;
-          font-size: 0.75rem;
-          font-weight: 700;
-          padding: 0.3rem 0.75rem;
+          font-size: 0.72rem;
+          font-weight: 800;
+          padding: 0.28rem 0.7rem;
           border-radius: var(--border-radius-full);
-          box-shadow: var(--shadow-sm);
+          box-shadow: 0 2px 8px rgba(99,102,241,0.4);
+          z-index: 2;
+          letter-spacing: 0.02em;
         }
         
         /* Card Body */
         .card-body {
-          padding: 1.25rem;
+          padding: 1rem 1.25rem 0.75rem;
           flex-grow: 1;
           display: flex;
           flex-direction: column;
+        }
+        
+        /* Host info row */
+        .host-info-row {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          margin-bottom: 0.5rem;
+        }
+        
+        .host-logo-thumb {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid var(--glass-border);
+          flex-shrink: 0;
+          background: var(--bg-tertiary);
+        }
+        
+        .host-avatar-thumb {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.85rem;
+          font-weight: 800;
+          flex-shrink: 0;
         }
         
         .event-title {
@@ -208,10 +278,11 @@ export default function EventCard({ event, onClick }) {
         }
         
         .event-host {
-          font-size: 0.8rem;
+          font-size: 0.78rem;
           color: var(--fg-tertiary);
           font-weight: 600;
-          margin-bottom: 1rem;
+          margin-bottom: 0;
+          line-height: 1.2;
         }
         
         .meta-list {

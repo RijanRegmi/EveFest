@@ -28,7 +28,9 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "htt
 function resolveImageUrl(url) {
   if (!url) return "";
   if (url.startsWith("http") || url.startsWith("blob:")) return url;
-  return `${BACKEND_URL}${url}`;
+  const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+  const cleanBackend = BACKEND_URL.endsWith("/") ? BACKEND_URL.slice(0, -1) : BACKEND_URL;
+  return `${cleanBackend}${cleanUrl}`;
 }
 
 export default function EditEventPage() {
