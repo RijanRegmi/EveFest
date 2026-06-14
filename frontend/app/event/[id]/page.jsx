@@ -24,7 +24,8 @@ import {
   BookOpen,
   Edit,
   Trash2,
-  ShieldOff
+  ShieldOff,
+  Printer
 } from "lucide-react";
 
 function EventDetailPageContent() {
@@ -71,6 +72,7 @@ function EventDetailPageContent() {
   const [checkoutData, setCheckoutData] = useState({ cardNum: "", expiry: "", cvv: "" });
   const [checkoutError, setCheckoutError] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingQty, setBookingQty] = useState(1);
 
   // Check registration status - hooks and variables moved to top to prevent Rules of Hooks violations
   const userEventBookings = event ? bookings.filter(
@@ -82,6 +84,21 @@ function EventDetailPageContent() {
     user._id === event.hostId?._id ||
     user._id === event.hostId?.toString()
   );
+
+  const isUnlimited = event ? (event.limit === "unlimited" || !event.limit) : true;
+  const seatsLeft = event ? (isUnlimited ? null : Math.max(0, event.limit - (event.registeredCount || 0))) : 0;
+  const isSoldOut = event ? (!isUnlimited && seatsLeft <= 0) : false;
+
+  const maxSeatsAllowed = event ? (event.maxSeatsPerUser || 5) : 5;
+  const userBookedCount = userEventBookings.length;
+  const remainingAllowedForUser = Math.max(0, maxSeatsAllowed - userBookedCount);
+  const maxQtyToBook = event ? (isUnlimited ? remainingAllowedForUser : Math.min(remainingAllowedForUser, seatsLeft)) : 0;
+
+  useEffect(() => {
+    if (maxQtyToBook > 0 && bookingQty > maxQtyToBook) {
+      setBookingQty(maxQtyToBook);
+    }
+  }, [maxQtyToBook, bookingQty]);
 
   // Chat room messages
   const eventChats = event ? (chatMessages[event._id] || []) : [];
@@ -373,10 +390,7 @@ function EventDetailPageContent() {
       </>
     );
   }
-  // Pricing & Capacity Details
-  const isUnlimited = event.limit === "unlimited" || !event.limit;
-  const seatsLeft = isUnlimited ? null : Math.max(0, event.limit - (event.registeredCount || 0));
-  const isSoldOut = !isUnlimited && seatsLeft <= 0;
+  // Pricing & Capacity Details are defined at the top to comply with the Rules of Hooks
 
 
 
@@ -409,10 +423,11 @@ function EventDetailPageContent() {
     setCheckoutError("");
     try {
       await new Promise((res) => setTimeout(res, 1200));
-      const success = await bookEvent(event._id, event.price > 0 ? checkoutData : null);
+      const success = await bookEvent(event._id, event.price > 0 ? checkoutData : null, bookingQty);
       if (success) {
         setShowCheckout(false);
         setCheckoutData({ cardNum: "", expiry: "", cvv: "" });
+        setBookingQty(1);
       }
     } catch (err) {
       setCheckoutError(err.message || "Checkout failed");
@@ -457,6 +472,529 @@ function EventDetailPageContent() {
   const handleBackClick = () => {
     const view = searchParams.get("view") || "explore";
     router.push(`/?view=${view}`);
+  };
+
+  const getQRCodeDataURL = (ticketCode) => {
+    if (typeof window === "undefined") return "";
+    const canvas = document.createElement("canvas");
+    canvas.width = 150;
+    canvas.height = 150;
+    const ctx = canvas.getContext("2d");
+    const size = 150;
+    
+    const code = ticketCode || "TICKET-SAMPLE";
+    let hash = 0;
+    for (let i = 0; i < code.length; i++) {
+      hash = code.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    const gridSize = 15;
+    const cellSize = size / gridSize;
+    
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+    
+    const drawFinderPattern = (x, y) => {
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(x * cellSize, y * cellSize, 7 * cellSize, 7 * cellSize);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 5 * cellSize, 5 * cellSize);
+      ctx.fillStyle = "#000000";
+      ctx.fillRect((x + 2) * cellSize, (y + 2) * cellSize, 3 * cellSize, 3 * cellSize);
+    };
+    
+    const isFinder = (r, c) => {
+      if (r < 7 && c < 7) return true;
+      if (r < 7 && c >= gridSize - 7) return true;
+      if (r >= gridSize - 7 && c < 7) return true;
+      return false;
+    };
+    
+    drawFinderPattern(0, 0);
+    drawFinderPattern(gridSize - 7, 0);
+    drawFinderPattern(0, gridSize - 7);
+    
+    ctx.fillStyle = "#000000";
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        if (isFinder(r, c)) continue;
+        const val = Math.sin(hash + r * 13.5 + c * 37.7) * 10000;
+        const isFilled = (val - Math.floor(val)) > 0.48;
+        if (isFilled) {
+          ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+    return canvas.toDataURL("image/png");
+  };
+
+  const handlePrintTicket = (booking, index) => {
+    const qrCodeData = getQRCodeDataURL(booking.ticketCode);
+    const printWindow = window.open("", "_blank", "width=600,height=800");
+    if (!printWindow) {
+      showToast("Please allow popups to print tickets", "warning");
+      return;
+    }
+    
+    const ticketHtml = `
+      <html>
+        <head>
+          <title>EveFest Ticket - ${event.title}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+            body {
+              font-family: 'Outfit', sans-serif;
+              background-color: #f3f4f6;
+              margin: 0;
+              padding: 40px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .ticket-container {
+              background: #ffffff;
+              width: 100%;
+              max-width: 450px;
+              border-radius: 20px;
+              box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+              overflow: hidden;
+              border: 1px solid #e5e7eb;
+              position: relative;
+            }
+            .ticket-header {
+              background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+              color: #ffffff;
+              padding: 25px;
+              text-align: center;
+              position: relative;
+            }
+            .ticket-logo {
+              font-size: 24px;
+              font-weight: 800;
+              letter-spacing: -0.03em;
+              margin: 0 0 5px 0;
+            }
+            .ticket-subtitle {
+              font-size: 12px;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              opacity: 0.8;
+              margin: 0;
+            }
+            .ticket-content {
+              padding: 30px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+            }
+            .event-title {
+              font-size: 22px;
+              font-weight: 800;
+              color: #111827;
+              text-align: center;
+              margin: 0 0 15px 0;
+              line-height: 1.2;
+            }
+            .meta-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 15px;
+              width: 100%;
+              margin-bottom: 25px;
+              border-bottom: 1px dashed #e5e7eb;
+              padding-bottom: 20px;
+            }
+            .meta-item {
+              display: flex;
+              flex-direction: column;
+            }
+            .meta-label {
+              font-size: 11px;
+              text-transform: uppercase;
+              color: #6b7280;
+              font-weight: 600;
+              margin-bottom: 4px;
+            }
+            .meta-value {
+              font-size: 13px;
+              color: #1f2937;
+              font-weight: 600;
+            }
+            .qr-section {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              margin-bottom: 20px;
+            }
+            .qr-image {
+              width: 160px;
+              height: 160px;
+              border: 1px solid #e5e7eb;
+              padding: 10px;
+              border-radius: 12px;
+              background: #ffffff;
+            }
+            .ref-code {
+              font-family: monospace;
+              font-size: 14px;
+              font-weight: bold;
+              color: #4f46e5;
+              margin-top: 10px;
+              background: #e0e7ff;
+              padding: 4px 12px;
+              border-radius: 20px;
+            }
+            .ticket-holder-info {
+              background: #f9fafb;
+              border-radius: 12px;
+              padding: 12px 20px;
+              width: 100%;
+              box-sizing: border-box;
+              text-align: center;
+              border: 1px solid #f3f4f6;
+            }
+            .holder-name {
+              font-weight: 800;
+              color: #111827;
+              font-size: 15px;
+            }
+            .holder-label {
+              font-size: 11px;
+              color: #9ca3af;
+              text-transform: uppercase;
+              margin-bottom: 2px;
+            }
+            .ticket-perforation {
+              position: absolute;
+              bottom: 95px;
+              left: -10px;
+              width: 20px;
+              height: 20px;
+              background: #f3f4f6;
+              border-radius: 50%;
+              border-right: 1px solid #e5e7eb;
+              z-index: 10;
+            }
+            .ticket-perforation-right {
+              position: absolute;
+              bottom: 95px;
+              right: -10px;
+              width: 20px;
+              height: 20px;
+              background: #f3f4f6;
+              border-radius: 50%;
+              border-left: 1px solid #e5e7eb;
+              z-index: 10;
+            }
+            .print-btn-container {
+              display: flex;
+              justify-content: center;
+              margin-top: 25px;
+            }
+            .print-btn {
+              background: #4f46e5;
+              color: white;
+              border: none;
+              padding: 10px 24px;
+              font-size: 14px;
+              font-weight: 600;
+              border-radius: 8px;
+              cursor: pointer;
+              box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+              transition: all 0.2s;
+            }
+            .print-btn:hover {
+              background: #4338ca;
+            }
+            @media print {
+              body {
+                background: none;
+                padding: 0;
+              }
+              .ticket-container {
+                box-shadow: none;
+                border: none;
+                max-width: 100%;
+              }
+              .print-btn-container {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="ticket-container">
+            <div class="ticket-header">
+              <h1 class="ticket-logo">EveFest</h1>
+              <p class="ticket-subtitle">Official Event Entry Pass</p>
+            </div>
+            <div class="ticket-perforation"></div>
+            <div class="ticket-perforation-right"></div>
+            <div class="ticket-content">
+              <h2 class="event-title">${event.title}</h2>
+              
+              <div class="meta-grid">
+                <div class="meta-item">
+                  <span class="meta-label">Date</span>
+                  <span class="meta-value">${event.date}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Time</span>
+                  <span class="meta-value">${event.time}</span>
+                </div>
+                <div class="meta-item" style="grid-column: span 2;">
+                  <span class="meta-label">Location</span>
+                  <span class="meta-value">${event.isOnline ? "Online Stream" : event.location}</span>
+                </div>
+              </div>
+              
+              <div class="qr-section">
+                <img src="${qrCodeData}" class="qr-image" alt="Ticket QR Code" />
+                <div class="ref-code">${booking.ticketCode}</div>
+              </div>
+              
+              <div class="ticket-holder-info">
+                <div class="holder-label">Ticket Holder</div>
+                <div class="holder-name">${booking.userName || user?.name}</div>
+                <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">Ticket ${index + 1} of ${userEventBookings.length}</div>
+              </div>
+            </div>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 300);
+            }
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(ticketHtml);
+    printWindow.document.close();
+  };
+
+  const renderBookingActions = () => {
+    if (!event) return null;
+
+    if (event.isTakedown) {
+      return (
+        <div className="takedown-sidebar-banner" style={{ padding: "1rem 0", textAlign: "center" }}>
+          <ShieldOff size={32} className="text-danger" style={{ marginBottom: "0.5rem", display: "block", marginLeft: "auto", marginRight: "auto" }} />
+          <h4 style={{ color: "var(--color-danger)", fontWeight: "800", fontSize: "0.95rem" }}>Booking Suspended</h4>
+          <p style={{ fontSize: "0.8rem", color: "var(--fg-secondary)", textAlign: "center", lineHeight: "1.4", marginTop: "0.25rem" }}>
+            This event has been taken down by moderators and ticket booking is closed.
+          </p>
+        </div>
+      );
+    }
+
+    if (isRegistered) {
+      return (
+        <div className="registered-actions">
+          <div className="success-badge">
+            <ShieldCheck size={16} />
+            Booked: {userEventBookings.length} {userEventBookings.length === 1 ? "Ticket" : "Tickets"}
+          </div>
+          
+          {/* STACKED TICKETS CAROUSEL */}
+          <div className="ticket-stack-container" style={{ position: "relative", minHeight: "270px", marginTop: "0.75rem" }}>
+            {userEventBookings.map((b, idx) => {
+              const isActive = idx === activeTicketIndex;
+              const offset = idx - activeTicketIndex;
+              
+              if (offset < 0 || offset > 2) return null;
+              
+              const scale = 1 - offset * 0.05;
+              const translateY = offset * 12;
+              const rotate = offset === 0 ? 0 : offset * 2.5 * (idx % 2 === 0 ? 1 : -1);
+              const zIndex = 10 - offset;
+              const opacity = 1 - offset * 0.35;
+
+              return (
+                <div 
+                  key={b._id} 
+                  className={`ticket-card-stack-item glass-panel ${isActive ? "active" : ""}`}
+                  style={{
+                    transform: `scale(${scale}) translateY(${translateY}px) rotate(${rotate}deg)`,
+                    zIndex: zIndex,
+                    opacity: opacity,
+                    position: offset === 0 ? "relative" : "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    pointerEvents: isActive ? "auto" : "none",
+                    padding: "1.25rem",
+                    background: "rgba(18, 18, 20, 0.95)",
+                    border: isActive ? "1px solid var(--accent-primary)" : "1px solid var(--glass-border)",
+                    borderRadius: "var(--border-radius-md)"
+                  }}
+                >
+                  {/* Ticket physical shape styling */}
+                  <div className="ticket-body" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    <div className="ticket-info-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px dashed var(--glass-border)", paddingBottom: "0.5rem" }}>
+                      <span className="ticket-num" style={{ fontSize: "0.72rem", fontWeight: "800", color: "var(--accent-primary)" }}>PASS {idx + 1} of {userEventBookings.length}</span>
+                      <span className="ticket-holder" style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--fg-primary)", maxWidth: "100px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.userName || user?.name}</span>
+                    </div>
+                    
+                    <div className="qr-box-wrapper" style={{ display: "flex", justifyContent: "center", padding: "0.5rem", background: "white", borderRadius: "var(--border-radius-sm)", width: "100px", height: "100px", margin: "0 auto" }}>
+                      {isActive && (
+                        <canvas 
+                          ref={qrCanvasRef} 
+                          width="90" 
+                          height="90"
+                          style={{ imageRendering: "pixelated" }}
+                        />
+                      )}
+                    </div>
+
+                    <div className="ticket-reference-box">
+                      <span className="ref-lbl">Code Reference</span>
+                      <span className="ref-val" style={{ fontSize: "0.8rem" }}>{b.ticketCode}</span>
+                    </div>
+                  </div>
+
+                  <div className="ticket-footer" style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem" }}>
+                    <button 
+                      className="btn btn-secondary print-ticket-btn"
+                      onClick={() => handlePrintTicket(b, idx)}
+                      style={{ padding: "0.45rem", fontSize: "0.78rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", flex: 1 }}
+                    >
+                      <Printer size={12} /> Print / PDF
+                    </button>
+                    <button 
+                      className="btn btn-secondary cancel-booking-btn"
+                      onClick={() => handleCancelSpecific(b._id)}
+                      disabled={bookingLoading}
+                      style={{ padding: "0.45rem", fontSize: "0.78rem", flex: 1 }}
+                    >
+                      {bookingLoading ? "Processing..." : "Cancel Pass"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Dots / Navigation Indicator */}
+          {userEventBookings.length > 1 && (
+            <div className="stack-navigation" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0.75rem 0 1.25rem" }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                onClick={() => setActiveTicketIndex((prev) => (prev > 0 ? prev - 1 : userEventBookings.length - 1))}
+              >
+                &larr; Prev
+              </button>
+              <div className="dots-row" style={{ display: "flex", gap: "0.35rem" }}>
+                {userEventBookings.map((_, idx) => (
+                  <span 
+                    key={idx} 
+                    className={`dot ${idx === activeTicketIndex ? "active" : ""}`}
+                    onClick={() => setActiveTicketIndex(idx)}
+                    style={{
+                      width: "6px",
+                      height: "6px",
+                      borderRadius: "50%",
+                      background: idx === activeTicketIndex ? "var(--accent-primary)" : "var(--fg-tertiary)",
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                  />
+                ))}
+              </div>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                onClick={() => setActiveTicketIndex((prev) => (prev < userEventBookings.length - 1 ? prev + 1 : 0))}
+              >
+                Next &rarr;
+              </button>
+            </div>
+          )}
+
+          {/* Book Another Ticket option */}
+          {isSoldOut ? (
+            <button className="btn btn-primary btn-block" disabled style={{ marginTop: "0.5rem" }}>
+              Sold Out
+            </button>
+          ) : remainingAllowedForUser <= 0 ? (
+            <div className="limit-reached-badge" style={{ padding: "0.75rem", background: "rgba(239, 68, 68, 0.1)", color: "var(--color-danger)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "var(--border-radius-sm)", fontSize: "0.82rem", fontWeight: "600", textAlign: "center", marginTop: "0.5rem" }}>
+              Maximum booking limit reached ({maxSeatsAllowed} tickets)
+            </div>
+          ) : (
+            <div className="booking-qty-action-wrapper" style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.5rem" }}>
+              <div className="qty-selector-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 0.25rem", gap: "1rem" }}>
+                <span className="qty-label" style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--fg-secondary)" }}>Quantity:</span>
+                <select
+                  value={bookingQty}
+                  onChange={(e) => setBookingQty(Number(e.target.value))}
+                  className="form-control"
+                  style={{ width: "80px", padding: "0.35rem", borderRadius: "var(--border-radius-sm)", background: "var(--bg-secondary)", color: "var(--fg-primary)", border: "1px solid var(--glass-border)", cursor: "pointer" }}
+                >
+                  {Array.from({ length: maxQtyToBook }, (_, i) => i + 1).map((qty) => (
+                    <option key={qty} value={qty}>{qty}</option>
+                  ))}
+                </select>
+              </div>
+              <button 
+                className="btn btn-primary btn-block"
+                onClick={handleBookClick}
+                disabled={bookingLoading}
+              >
+                {bookingLoading 
+                  ? "Processing..." 
+                  : event.price > 0 
+                    ? "Book Another Pass" 
+                    : "Register Another Free Pass"}
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return isSoldOut ? (
+      <button className="btn btn-primary btn-block" disabled>
+        Sold Out
+      </button>
+    ) : remainingAllowedForUser <= 0 ? (
+      <div className="limit-reached-badge" style={{ padding: "0.75rem", background: "rgba(239, 68, 68, 0.1)", color: "var(--color-danger)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "var(--border-radius-sm)", fontSize: "0.82rem", fontWeight: "600", textAlign: "center" }}>
+        Maximum booking limit reached ({maxSeatsAllowed} tickets)
+      </div>
+    ) : (
+      <div className="booking-qty-action-wrapper" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div className="qty-selector-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 0.25rem", gap: "1rem" }}>
+          <span className="qty-label" style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--fg-secondary)" }}>Quantity:</span>
+          <select
+            value={bookingQty}
+            onChange={(e) => setBookingQty(Number(e.target.value))}
+            className="form-control"
+            style={{ width: "80px", padding: "0.35rem", borderRadius: "var(--border-radius-sm)", background: "var(--bg-secondary)", color: "var(--fg-primary)", border: "1px solid var(--glass-border)", cursor: "pointer" }}
+          >
+            {Array.from({ length: maxQtyToBook }, (_, i) => i + 1).map((qty) => (
+              <option key={qty} value={qty}>{qty}</option>
+            ))}
+          </select>
+        </div>
+        <button 
+          className="btn btn-primary btn-block"
+          onClick={handleBookClick}
+          disabled={bookingLoading}
+        >
+          {bookingLoading 
+            ? "Processing..." 
+            : event.price > 0 
+              ? "Purchase Pass" 
+              : "Register Free"}
+        </button>
+      </div>
+    );
   };
 
   const handleDeleteEvent = async () => {
@@ -717,164 +1255,16 @@ function EventDetailPageContent() {
                      )}
                    </div>
  
-                   <div className="booking-action-wrapper">
-                     {event.isTakedown ? (
-                       <div className="takedown-sidebar-banner" style={{ padding: "1rem 0", textAlign: "center" }}>
-                         <ShieldOff size={32} className="text-danger" style={{ marginBottom: "0.5rem", display: "block", marginLeft: "auto", marginRight: "auto" }} />
-                         <h4 style={{ color: "var(--color-danger)", fontWeight: "800", fontSize: "0.95rem" }}>Booking Suspended</h4>
-                         <p style={{ fontSize: "0.8rem", color: "var(--fg-secondary)", textAlign: "center", lineHeight: "1.4", marginTop: "0.25rem" }}>
-                           This event has been taken down by moderators and ticket booking is closed.
-                         </p>
-                       </div>
-                     ) : isRegistered ? (
-                       <div className="registered-actions">
-                         <div className="success-badge">
-                           <ShieldCheck size={16} />
-                           Booked: {userEventBookings.length} {userEventBookings.length === 1 ? "Ticket" : "Tickets"}
-                         </div>
-                         
-                         {/* STACKED TICKETS CAROUSEL */}
-                         <div className="ticket-stack-container" style={{ position: "relative", minHeight: "270px", marginTop: "0.75rem" }}>
-                           {userEventBookings.map((b, idx) => {
-                             const isActive = idx === activeTicketIndex;
-                             const offset = idx - activeTicketIndex;
-                             
-                             if (offset < 0 || offset > 2) return null;
-                             
-                             const scale = 1 - offset * 0.05;
-                             const translateY = offset * 12;
-                             const rotate = offset === 0 ? 0 : offset * 2.5 * (idx % 2 === 0 ? 1 : -1);
-                             const zIndex = 10 - offset;
-                             const opacity = 1 - offset * 0.35;
+                                       <div className="booking-limit-info" style={{ fontSize: "0.8rem", color: "var(--fg-tertiary)", margin: "0.5rem 0", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                      <span>Host limit: Max {maxSeatsAllowed} seats per user</span>
+                      {userBookedCount > 0 && (
+                        <span style={{ color: "var(--accent-primary)", fontWeight: "600" }}>You have booked {userBookedCount} seat(s)</span>
+                      )}
+                    </div>
 
-                             return (
-                               <div 
-                                 key={b._id} 
-                                 className={`ticket-card-stack-item glass-panel ${isActive ? "active" : ""}`}
-                                 style={{
-                                   transform: `scale(${scale}) translateY(${translateY}px) rotate(${rotate}deg)`,
-                                   zIndex: zIndex,
-                                   opacity: opacity,
-                                   position: offset === 0 ? "relative" : "absolute",
-                                   top: 0,
-                                   left: 0,
-                                   right: 0,
-                                   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                   pointerEvents: isActive ? "auto" : "none",
-                                   padding: "1.25rem",
-                                   background: "rgba(18, 18, 20, 0.95)",
-                                   border: isActive ? "1px solid var(--accent-primary)" : "1px solid var(--glass-border)",
-                                   borderRadius: "var(--border-radius-md)"
-                                 }}
-                               >
-                                 {/* Ticket physical shape styling */}
-                                 <div className="ticket-body" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                                   <div className="ticket-info-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px dashed var(--glass-border)", paddingBottom: "0.5rem" }}>
-                                     <span className="ticket-num" style={{ fontSize: "0.72rem", fontWeight: "800", color: "var(--accent-primary)" }}>PASS {idx + 1} of {userEventBookings.length}</span>
-                                     <span className="ticket-holder" style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--fg-primary)", maxWidth: "100px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.userName || user?.name}</span>
-                                   </div>
-                                   
-                                   <div className="qr-box-wrapper" style={{ display: "flex", justifyContent: "center", padding: "0.5rem", background: "white", borderRadius: "var(--border-radius-sm)", width: "100px", height: "100px", margin: "0 auto" }}>
-                                     {isActive && (
-                                       <canvas 
-                                         ref={qrCanvasRef} 
-                                         width="90" 
-                                         height="90"
-                                         style={{ imageRendering: "pixelated" }}
-                                       />
-                                     )}
-                                   </div>
-
-                                   <div className="ticket-reference-box">
-                                     <span className="ref-lbl">Code Reference</span>
-                                     <span className="ref-val" style={{ fontSize: "0.8rem" }}>{b.ticketCode}</span>
-                                   </div>
-                                 </div>
-
-                                 <div className="ticket-footer" style={{ marginTop: "0.75rem" }}>
-                                   <button 
-                                     className="btn btn-secondary cancel-booking-btn"
-                                     onClick={() => handleCancelSpecific(b._id)}
-                                     disabled={bookingLoading}
-                                     style={{ padding: "0.45rem", fontSize: "0.78rem" }}
-                                   >
-                                     {bookingLoading ? "Processing..." : "Cancel This Pass"}
-                                   </button>
-                                 </div>
-                               </div>
-                             );
-                           })}
-                         </div>
-
-                         {/* Dots / Navigation Indicator */}
-                         {userEventBookings.length > 1 && (
-                           <div className="stack-navigation" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0.75rem 0 1.25rem" }}>
-                             <button 
-                               className="btn btn-secondary" 
-                               style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                               onClick={() => setActiveTicketIndex((prev) => (prev > 0 ? prev - 1 : userEventBookings.length - 1))}
-                             >
-                               &larr; Prev
-                             </button>
-                             <div className="dots-row" style={{ display: "flex", gap: "0.35rem" }}>
-                               {userEventBookings.map((_, idx) => (
-                                 <span 
-                                   key={idx} 
-                                   className={`dot ${idx === activeTicketIndex ? "active" : ""}`}
-                                   onClick={() => setActiveTicketIndex(idx)}
-                                   style={{
-                                     width: "6px",
-                                     height: "6px",
-                                     borderRadius: "50%",
-                                     background: idx === activeTicketIndex ? "var(--accent-primary)" : "var(--fg-tertiary)",
-                                     cursor: "pointer",
-                                     transition: "all 0.2s"
-                                   }}
-                                 />
-                               ))}
-                             </div>
-                             <button 
-                               className="btn btn-secondary" 
-                               style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                               onClick={() => setActiveTicketIndex((prev) => (prev < userEventBookings.length - 1 ? prev + 1 : 0))}
-                             >
-                               Next &rarr;
-                             </button>
-                           </div>
-                         )}
-
-                         {/* Book Another Ticket option */}
-                         <button 
-                           className="btn btn-primary btn-block"
-                           onClick={handleBookClick}
-                           disabled={isSoldOut || bookingLoading}
-                           style={{ marginTop: "0.5rem" }}
-                         >
-                           {bookingLoading 
-                             ? "Processing..." 
-                             : isSoldOut 
-                               ? "Sold Out" 
-                               : event.price > 0 
-                                 ? "Book Another Pass" 
-                                 : "Register Another Free Pass"}
-                         </button>
-                       </div>
-                     ) : (
-                       <button 
-                         className="btn btn-primary btn-block"
-                         onClick={handleBookClick}
-                         disabled={isSoldOut || bookingLoading}
-                       >
-                         {bookingLoading 
-                           ? "Processing..." 
-                           : isSoldOut 
-                             ? "Sold Out" 
-                             : event.price > 0 
-                               ? "Purchase Pass" 
-                               : "Register Free"}
-                       </button>
-                     )}
-                   </div>
+<div className="booking-action-wrapper">
+                      {renderBookingActions()}
+                    </div>
                  </>
                )}
              </div>
@@ -1191,9 +1581,19 @@ function EventDetailPageContent() {
             
             {checkoutError && <div className="checkout-error-banner">{checkoutError}</div>}
 
-            <div className="checkout-summary">
-              <span>Event Pass Price:</span>
-              <strong>${event.price}</strong>
+            <div className="checkout-summary" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", borderBottom: "1px dashed var(--glass-border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Quantity:</span>
+                <strong>{bookingQty} ticket(s)</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Unit Price:</span>
+                <strong>${event.price}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.1rem", color: "var(--accent-primary)" }}>
+                <span>Total Price:</span>
+                <strong>${event.price * bookingQty}</strong>
+              </div>
             </div>
 
             <form onSubmit={handleCheckoutSubmit} className="checkout-form">
@@ -1273,7 +1673,7 @@ function EventDetailPageContent() {
                   className="btn btn-primary"
                   disabled={bookingLoading}
                 >
-                  {bookingLoading ? "Processing..." : `Pay $${event.price}`}
+                  {bookingLoading ? "Processing..." : `Pay $${event.price * bookingQty}`}
                 </button>
               </div>
             </form>

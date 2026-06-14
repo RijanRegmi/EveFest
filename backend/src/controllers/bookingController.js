@@ -2,8 +2,8 @@ import * as bookingService from "../services/bookingService.js";
 
 export const createBooking = async (req, res, next) => {
   try {
-    const { eventId, paymentDetails } = req.body;
-    const booking = await bookingService.createBooking(eventId, req.user._id, paymentDetails);
+    const { eventId, paymentDetails, ticketCount } = req.body;
+    const booking = await bookingService.createBooking(eventId, req.user._id, paymentDetails, ticketCount);
     res.status(201).json(booking);
   } catch (error) {
     res.status(400);

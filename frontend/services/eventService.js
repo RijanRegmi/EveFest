@@ -174,11 +174,11 @@ export async function deleteEventApi(eventId, token) {
   }
 }
 
-export async function bookEventApi(eventId, paymentDetails, token) {
+export async function bookEventApi(eventId, paymentDetails, token, ticketCount = 1) {
   try {
     return await request(`/bookings`, {
       method: "POST",
-      body: { eventId, paymentDetails },
+      body: { eventId, paymentDetails, ticketCount },
     });
   } catch (error) {
     if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
@@ -189,36 +189,42 @@ export async function bookEventApi(eventId, paymentDetails, token) {
       if (eventIdx === -1) throw new Error("Event not found (Local Database Mode)");
 
       const event = events[eventIdx];
-      if (event.limit !== "unlimited" && event.registeredCount >= event.limit) {
+      const count = Number(ticketCount || 1);
+      if (event.limit !== "unlimited" && (event.registeredCount || 0) + count > event.limit) {
         throw new Error("This event is fully booked!");
       }
 
       const userId = token.replace("mock_token_", "");
 
-      event.registeredCount = (event.registeredCount || 0) + 1;
+      const newBookings = [];
+      for (let i = 0; i < count; i++) {
+        const newBooking = {
+          _id: `booking_${Date.now()}_${i}`,
+          user: userId,
+          event: {
+            _id: event._id,
+            title: event.title,
+            date: event.date,
+            time: event.time,
+            price: event.price,
+            location: event.location,
+            isOnline: event.isOnline
+          },
+          paymentStatus: event.price > 0 ? "Paid" : "Free",
+          ticketCode: `EVF-${Math.floor(100000 + Math.random() * 900000)}`,
+          createdAt: new Date().toISOString()
+        };
+        bookings.push(newBooking);
+        newBookings.push(newBooking);
+      }
+
+      event.registeredCount = (event.registeredCount || 0) + count;
       events[eventIdx] = event;
+      
       saveLocalEvents(events);
-
-      const newBooking = {
-        _id: `booking_${Date.now()}`,
-        user: userId,
-        event: {
-          _id: event._id,
-          title: event.title,
-          date: event.date,
-          time: event.time,
-          price: event.price,
-          location: event.location,
-          isOnline: event.isOnline,
-        },
-        paymentStatus: event.price > 0 ? "Paid" : "Free",
-        ticketCode: `EVF-${Math.floor(100000 + Math.random() * 900000)}`,
-        createdAt: new Date().toISOString(),
-      };
-
-      bookings.push(newBooking);
       saveLocalBookings(bookings);
-      return newBooking;
+
+      return count === 1 ? newBookings[0] : newBookings;
     }
     throw error;
   }

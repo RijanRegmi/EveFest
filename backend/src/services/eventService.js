@@ -42,6 +42,7 @@ export const createEvent = async (eventData, userId, userName) => {
     hostId: userId,
     proofDoc: proofDocName || null,
     rules: rules || "",
+    maxSeatsPerUser: Number(eventData.maxSeatsPerUser || 5),
   });
 
   return await event.save();
@@ -67,7 +68,7 @@ export const updateEvent = async (eventId, userId, updateData) => {
   const allowedFields = [
     "title", "description", "date", "time", "price", "limit",
     "isOnline", "location", "mapLink", "locationDescription",
-    "image", "logo", "category", "rules",
+    "image", "logo", "category", "rules", "maxSeatsPerUser",
   ];
 
   allowedFields.forEach((field) => {
@@ -83,6 +84,9 @@ export const updateEvent = async (eventId, userId, updateData) => {
   }
   if (updateData.isOnline !== undefined) {
     event.isOnline = updateData.isOnline === "true" || updateData.isOnline === true;
+  }
+  if (updateData.maxSeatsPerUser !== undefined) {
+    event.maxSeatsPerUser = Number(updateData.maxSeatsPerUser || 5);
   }
 
   return await event.save();

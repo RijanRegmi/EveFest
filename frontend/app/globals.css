@@ -132,6 +132,11 @@ input, select, textarea {
   outline: none;
 }
 
+select option {
+  background-color: var(--bg-primary);
+  color: var(--fg-primary);
+}
+
 .container {
   width: 100%;
   max-width: 1200px;

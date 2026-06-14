@@ -1,5 +1,7 @@
 import * as eventService from "../services/eventService.js";
 import path from "path";
+import Event from "../models/Event.js";
+import Booking from "../models/Booking.js";
 
 export const getEvents = async (req, res, next) => {
   try {
@@ -113,6 +115,25 @@ export const uploadEventImages = async (req, res, next) => {
       return next(new Error("No files were uploaded"));
     }
     res.status(200).json(result);
+  } catch (error) {
+    res.status(500);
+    next(error);
+  }
+};
+
+// GET /api/events/stats
+export const getEventStats = async (req, res, next) => {
+  try {
+    const liveEventsCount = await Event.countDocuments({ isTakedown: { $ne: true } });
+    const ticketsIssuedCount = await Booking.countDocuments({});
+    const uniqueHosts = await Event.distinct("hostName", { isTakedown: { $ne: true } });
+    const societiesOnboardCount = uniqueHosts.length;
+
+    res.status(200).json({
+      liveEvents: liveEventsCount,
+      ticketsIssued: ticketsIssuedCount,
+      societiesOnboard: societiesOnboardCount,
+    });
   } catch (error) {
     res.status(500);
     next(error);

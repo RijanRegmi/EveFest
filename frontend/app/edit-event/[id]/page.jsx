@@ -58,6 +58,7 @@ export default function EditEventPage() {
     limit: "unlimited",
     limitCount: 50,
     rules: "",
+    maxSeatsPerUser: 5,
   });
 
   // File states
@@ -100,6 +101,7 @@ export default function EditEventPage() {
           limit: data.limit === "unlimited" || !data.limit ? "unlimited" : "limited",
           limitCount: data.limit !== "unlimited" && data.limit ? Number(data.limit) : 50,
           rules: data.rules || "",
+          maxSeatsPerUser: data.maxSeatsPerUser || 5,
         });
 
         // Set existing images as previews
@@ -163,6 +165,7 @@ export default function EditEventPage() {
       fd.append("price", formData.isPaid ? Number(formData.price) : 0);
       fd.append("limit", formData.limit === "unlimited" ? "unlimited" : Number(formData.limitCount));
       fd.append("rules", formData.rules);
+      fd.append("maxSeatsPerUser", Number(formData.maxSeatsPerUser || 5));
 
       // Attach new file uploads if selected
       if (bannerFile) {
@@ -445,6 +448,10 @@ export default function EditEventPage() {
                       <input type="number" name="limitCount" value={formData.limitCount} onChange={handleChange} min="1" className="form-control" />
                     </div>
                   )}
+                  <div className="form-group">
+                    <label className="form-label">Max Seats Per User</label>
+                    <input type="number" name="maxSeatsPerUser" value={formData.maxSeatsPerUser} onChange={handleChange} min="1" className="form-control" required />
+                  </div>
                 </div>
                 <div className="form-row">
                   <div className="form-group">

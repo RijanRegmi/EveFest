@@ -155,24 +155,30 @@ export function AppProvider({ children }) {
   };
 
   // 4. Booking actions
-  const bookEvent = async (eventId, paymentDetails = null) => {
+  const bookEvent = async (eventId, paymentDetails = null, ticketCount = 1) => {
     if (!user) {
       window.location.href = "/login";
       showToast("Please sign in to book this event.", "warning");
       return false;
     }
 
+    const count = Number(ticketCount || 1);
+
     try {
       const token = localStorage.getItem("token");
-      const booking = await bookEventApi(eventId, paymentDetails, token);
+      const booking = await bookEventApi(eventId, paymentDetails, token, count);
       
-      setBookings((prev) => [...prev, booking]);
+      if (Array.isArray(booking)) {
+        setBookings((prev) => [...prev, ...booking]);
+      } else {
+        setBookings((prev) => [...prev, booking]);
+      }
       
       // Update local event seat count
       setEvents((prevEvents) =>
         prevEvents.map((evt) => {
           if (evt._id === eventId && evt.limit && evt.limit !== "unlimited") {
-            return { ...evt, registeredCount: (evt.registeredCount || 0) + 1 };
+            return { ...evt, registeredCount: (evt.registeredCount || 0) + count };
           }
           return evt;
         })

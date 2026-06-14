@@ -82,6 +82,11 @@ const eventSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    maxSeatsPerUser: {
+      type: Number,
+      default: 5,
+      min: [1, "Maximum seats per user must be at least 1"],
+    },
     takedownReason: {
       type: String,
       default: "",

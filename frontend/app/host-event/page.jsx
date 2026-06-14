@@ -42,6 +42,7 @@ export default function HostEventPage() {
     isPaid: false,
     limit: "unlimited",
     limitCount: 50,
+    maxSeatsPerUser: 5,
     rules: "",
     proofDocName: "",
   });
@@ -142,6 +143,7 @@ export default function HostEventPage() {
       fd.append("locationDescription", formData.locationDescription);
       fd.append("price", formData.isPaid ? Number(formData.price) : 0);
       fd.append("limit", formData.limit === "unlimited" ? "unlimited" : Number(formData.limitCount));
+      fd.append("maxSeatsPerUser", Number(formData.maxSeatsPerUser || 5));
       fd.append("rules", formData.rules);
       if (formData.proofDocName) fd.append("proofDocName", formData.proofDocName);
 
@@ -488,6 +490,24 @@ export default function HostEventPage() {
                       />
                     </div>
                   )}
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Max Seats Per User *</label>
+                    <input
+                      type="number"
+                      name="maxSeatsPerUser"
+                      value={formData.maxSeatsPerUser}
+                      onChange={handleChange}
+                      min="1"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    {/* empty col for layout alignment */}
+                  </div>
                 </div>
 
                 <div className="form-row">

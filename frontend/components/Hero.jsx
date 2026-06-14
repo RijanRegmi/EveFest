@@ -14,6 +14,28 @@ export default function Hero({
   setFilterPrice,
   events = []
 }) {
+  const [stats, setStats] = React.useState({
+    liveEvents: 0,
+    ticketsIssued: 0,
+    societiesOnboard: 0
+  });
+
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+        const res = await fetch(`${API_URL}/events/stats`);
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch (error) {
+        console.error("Error fetching statistics:", error);
+      }
+    };
+    fetchStats();
+  }, []);
+
   // Only show categories that actually have events — avoids tab overflow from empty static categories
   const eventCategories = Array.from(new Set(events.map(e => e.category).filter(Boolean)));
   const allCategoryNames = ["All", ...eventCategories];
@@ -117,15 +139,19 @@ export default function Hero({
         {/* Stats Section */}
         <div className="stats-grid">
           <div className="stat-card">
-            <span className="stat-value">50+</span>
+            <span className="stat-value">{stats.liveEvents}</span>
             <span className="stat-label">Live Events</span>
           </div>
           <div className="stat-card">
-            <span className="stat-value">3.2k</span>
+            <span className="stat-value">
+              {stats.ticketsIssued >= 1000 
+                ? `${(stats.ticketsIssued / 1000).toFixed(1)}k` 
+                : stats.ticketsIssued}
+            </span>
             <span className="stat-label">Tickets Issued</span>
           </div>
           <div className="stat-card">
-            <span className="stat-value">12+</span>
+            <span className="stat-value">{stats.societiesOnboard}</span>
             <span className="stat-label">Societies Onboard</span>
           </div>
         </div>
