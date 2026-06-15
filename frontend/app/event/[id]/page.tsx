@@ -801,7 +801,7 @@ function EventDetailPageContent() {
       return (
         <div className="registered-actions">
           <div className="success-badge">
-            <ShieldCheck size={16} />
+            <ShieldCheck size={16} className="animate-bounce-in" />
             Booked: {userEventBookings.length} {userEventBookings.length === 1 ? "Ticket" : "Tickets"}
           </div>
           

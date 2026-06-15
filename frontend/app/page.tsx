@@ -8,6 +8,7 @@ import Hero from "../components/Hero";
 import EventCard from "../components/EventCard";
 import AuthModal from "../components/AuthModal";
 import Dashboard from "../components/Dashboard";
+import ScrollReveal from "../components/ScrollReveal";
 import { Info, Shield, Award, CalendarDays, Sparkles } from "lucide-react";
 import type { IEvent } from "@/types";
 
@@ -76,23 +77,36 @@ function HomeContent() {
 
           {/* Events Grid Section */}
           <section className="events-grid-section container">
-            <div className="section-header">
-              <h2 className="section-title">
-                {searchQuery || selectedCategory !== "All" || filterOnline !== "all" || filterPrice !== "all" 
-                  ? "Filtered Search Results" 
-                  : "Featured Campus Events"
-                }
-              </h2>
-              <span className="results-count">{filteredEvents.length} events found</span>
-            </div>
+            <ScrollReveal direction="up" delay={50}>
+              <div className="section-header">
+                <h2 className="section-title">
+                  {searchQuery || selectedCategory !== "All" || filterOnline !== "all" || filterPrice !== "all" 
+                    ? "Filtered Search Results" 
+                    : "Featured Campus Events"
+                  }
+                </h2>
+                <span className="results-count">{filteredEvents.length} events found</span>
+              </div>
+            </ScrollReveal>
 
             {loading ? (
-              <div className="loader-box">
-                <div className="spinner"></div>
-                <p>Loading live campus activities...</p>
+              <div className="events-grid">
+                {[...Array(6)].map((_, idx) => (
+                  <div key={idx} className="skeleton-card skeleton" style={{ "--index": idx } as React.CSSProperties}>
+                    <div className="skeleton-image skeleton" />
+                    <div className="skeleton-card-body">
+                      <div className="skeleton-text title skeleton" />
+                      <div className="skeleton-text subtitle skeleton" />
+                      <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+                        <div className="skeleton-text skeleton" style={{ width: "35%", height: "1.25rem", margin: 0 }} />
+                        <div className="skeleton" style={{ width: "40%", height: "2.2rem", borderRadius: "var(--border-radius-sm)" }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredEvents.length === 0 ? (
-              <div className="empty-results glass-panel">
+              <div className="empty-results glass-panel animate-slide-up">
                 <Info size={40} className="empty-info-icon" />
                 <h3>No Matching Events</h3>
                 <p>We couldn&apos;t find any events matching your search filters. Try resetting the filters or modifying your text query.</p>
@@ -109,56 +123,65 @@ function HomeContent() {
                 </button>
               </div>
             ) : (
-              <div className="events-grid">
-                {filteredEvents.map((evt) => (
-                  <EventCard 
-                    key={evt._id} 
-                    event={evt} 
-                    onClick={() => router.push(`/event/${evt._id}`)} 
-                  />
-                ))}
-              </div>
+              <ScrollReveal direction="up" delay={100} duration={700}>
+                <div className="events-grid">
+                  {filteredEvents.map((evt, idx) => (
+                    <div 
+                      key={evt._id} 
+                      className="animate-stagger-item" 
+                      style={{ "--index": idx } as React.CSSProperties}
+                    >
+                      <EventCard 
+                        event={evt} 
+                        onClick={() => router.push(`/event/${evt._id}`)} 
+                      />
+                    </div>
+                  ))}
+                </div>
+              </ScrollReveal>
             )}
           </section>
 
           {/* Portal User Guide & FAQ Section (Heuristic 10: Help & Documentation) */}
           <section className="guide-faq-section container">
-            <div className="guide-card glass-panel">
-              <div className="guide-badge">
-                <Sparkles size={16} />
-                <span>USER COMPLIANCE GUIDE</span>
+            <ScrollReveal direction="up" delay={100}>
+              <div className="guide-card glass-panel">
+                <div className="guide-badge">
+                  <Sparkles size={16} />
+                  <span>USER COMPLIANCE GUIDE</span>
+                </div>
+                <h2 className="guide-title">How EveFest Works</h2>
+                <p className="guide-desc">
+                  Welcome to the official Event Hub! A trusted university space to connect with student societies, explore workshops, register for coding hackathons, or coordinate your own group events with ease.
+                </p>
+
+                <div className="guide-steps-grid">
+                  <div className="step-card">
+                    <div className="step-icon-box indigo-box">
+                      <CalendarDays size={20} />
+                    </div>
+                    <h4>Explore & Search</h4>
+                    <p>Browse events using filters. Instantly search by tags, formats (Online stream or physical IRL), or price range.</p>
+                  </div>
+
+                  <div className="step-card">
+                    <div className="step-icon-box cyan-box">
+                      <Shield size={20} />
+                    </div>
+                    <h4>Trust & Safety</h4>
+                    <p>Hosts can upload official approval permits or society letters to verify the event. Check for the Shield badge on event pages.</p>
+                  </div>
+
+                  <div className="step-card">
+                    <div className="step-icon-box green-box">
+                      <Award size={20} />
+                    </div>
+                    <h4>Instant Checkout</h4>
+                    <p>Confirm seat registration instantly. Digital tickets with scan-ready QR codes are generated directly in your student dashboard.</p>
+                  </div>
+                </div>
               </div>
-              <h2 className="guide-title">How EveFest Works</h2>
-              <p className="guide-desc">
-                Welcome to the official Event Hub! A trusted university space to connect with student societies, explore workshops, register for coding hackathons, or coordinate your own group events with ease.
-              </p>
-
-              <div className="guide-steps-grid">
-                <div className="step-card">
-                  <div className="step-icon-box indigo-box">
-                    <CalendarDays size={20} />
-                  </div>
-                  <h4>Explore & Search</h4>
-                  <p>Browse events using filters. Instantly search by tags, formats (Online stream or physical IRL), or price range.</p>
-                </div>
-
-                <div className="step-card">
-                  <div className="step-icon-box cyan-box">
-                    <Shield size={20} />
-                  </div>
-                  <h4>Trust & Safety</h4>
-                  <p>Hosts can upload official approval permits or society letters to verify the event. Check for the Shield badge on event pages.</p>
-                </div>
-
-                <div className="step-card">
-                  <div className="step-icon-box green-box">
-                    <Award size={20} />
-                  </div>
-                  <h4>Instant Checkout</h4>
-                  <p>Confirm seat registration instantly. Digital tickets with scan-ready QR codes are generated directly in your student dashboard.</p>
-                </div>
-              </div>
-            </div>
+            </ScrollReveal>
           </section>
         </main>
       ) : (

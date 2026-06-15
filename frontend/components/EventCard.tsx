@@ -142,14 +142,22 @@ export default function EventCard({ event, onClick }: EventCardProps) {
           border-radius: var(--border-radius-md);
           overflow: hidden;
           cursor: pointer;
-          transition: var(--transition-smooth);
+          transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
           height: 100%;
         }
         
         .event-card:hover {
-          transform: translateY(-6px);
+          transform: translateY(-6px) scale(1.01);
           border-color: var(--accent-primary);
-          box-shadow: var(--shadow-lg), 0 4px 20px rgba(99, 102, 241, 0.1);
+          box-shadow: var(--shadow-lg), 0 8px 30px rgba(99, 102, 241, 0.15);
+        }
+        
+        .event-card :global(.footer-btn svg) {
+          transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .event-card:hover :global(.footer-btn svg) {
+          transform: translateX(4px);
         }
         
         .card-banner {
@@ -177,12 +185,12 @@ export default function EventCard({ event, onClick }: EventCardProps) {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
           transform-origin: center center;
         }
         
         .event-card:hover .banner-img {
-          transform: scale(1.1);
+          transform: scale(1.07);
         }
         
         /* Badges Overlay */
@@ -201,6 +209,11 @@ export default function EventCard({ event, onClick }: EventCardProps) {
           border: none;
           z-index: 2;
           min-width: 46px;
+          transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .event-card:hover .date-badge {
+          transform: scale(1.06) translateY(-2px);
         }
         
         .date-month {
@@ -234,6 +247,12 @@ export default function EventCard({ event, onClick }: EventCardProps) {
           box-shadow: 0 2px 8px rgba(99,102,241,0.4);
           z-index: 2;
           letter-spacing: 0.02em;
+          transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .event-card:hover .category-badge {
+          transform: scale(1.05) translateY(-1px);
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.6);
         }
         
         /* Card Body */

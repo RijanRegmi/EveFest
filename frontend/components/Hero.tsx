@@ -49,6 +49,50 @@ export default function Hero({
     fetchStats();
   }, []);
 
+  // Single-run typewriter animation for the entire title sentence
+  const part1 = "Discover & Host ";
+  const part2 = "Unforgettable";
+  const part3 = " Experiences";
+  const totalLength = part1.length + part2.length + part3.length;
+  
+  const [charCount, setCharCount] = React.useState(0);
+
+  React.useEffect(() => {
+    if (charCount >= totalLength) return;
+
+    const timer = setTimeout(() => {
+      setCharCount((prev) => prev + 1);
+    }, 45); // Snappy letter-by-keyboard typing speed (45ms per char)
+
+    return () => clearTimeout(timer);
+  }, [charCount, totalLength]);
+
+  // Segment text dynamically depending on the current character index count
+  const getTypedText = () => {
+    let p1 = "";
+    let p2 = "";
+    let p3 = "";
+    let showCursorInPart = 1; // 1, 2, or 3
+
+    if (charCount <= part1.length) {
+      p1 = part1.slice(0, charCount);
+      showCursorInPart = 1;
+    } else if (charCount <= part1.length + part2.length) {
+      p1 = part1;
+      p2 = part2.slice(0, charCount - part1.length);
+      showCursorInPart = 2;
+    } else {
+      p1 = part1;
+      p2 = part2;
+      p3 = part3.slice(0, charCount - part1.length - part2.length);
+      showCursorInPart = 3;
+    }
+
+    return { p1, p2, p3, showCursorInPart };
+  };
+
+  const { p1, p2, p3, showCursorInPart } = getTypedText();
+
   // Only show categories that actually have events — avoids tab overflow from empty static categories
   const eventCategories = Array.from(new Set(events.map(e => e.category).filter(Boolean)));
   const allCategoryNames = ["All", ...eventCategories];
@@ -76,13 +120,18 @@ export default function Hero({
 
   return (
     <section className="hero-section">
-      {/* Background Decorative Accents */}
-      <div className="bg-glow bg-glow-violet"></div>
-      <div className="bg-glow bg-glow-cyan"></div>
+      {/* Background Decorative Accents (Aesthetic-Usability Effect) */}
+      <div className="bg-glow bg-glow-violet animate-float"></div>
+      <div className="bg-glow bg-glow-cyan animate-float" style={{ animationDelay: "-4s" }}></div>
 
       <div className="container hero-container animate-fade-in">
-        <h1 className="hero-title animate-slide-up">
-          Discover & Host <span className="text-gradient">Unforgettable</span> Experiences
+        <h1 className="hero-title animate-slide-up" style={{ minHeight: "calc(2 * 3.5rem * 1.15)" }}>
+          {p1}
+          {showCursorInPart === 1 && charCount < totalLength && <span className="typing-cursor">|</span>}
+          {p2 && <span className="text-gradient">{p2}</span>}
+          {showCursorInPart === 2 && charCount < totalLength && <span className="typing-cursor">|</span>}
+          {p3}
+          {showCursorInPart === 3 && charCount < totalLength && <span className="typing-cursor">|</span>}
         </h1>
         
         <p className="hero-subtitle">
@@ -133,14 +182,15 @@ export default function Hero({
           </div>
         </div>
 
-        {/* Category Tabs */}
+        {/* Category Tabs (Hick's Law / Staggering) */}
         <div className="category-container">
           <div className="category-scroll">
-            {categories.map((cat) => (
+            {categories.map((cat, idx) => (
               <button
                 key={cat.name}
                 onClick={() => setSelectedCategory(cat.name)}
-                className={`category-tab ${selectedCategory === cat.name ? "active" : ""}`}
+                className={`category-tab animate-stagger-item ${selectedCategory === cat.name ? "active" : ""}`}
+                style={{ "--index": idx } as React.CSSProperties}
               >
                 {cat.icon}
                 {cat.name}
@@ -384,6 +434,19 @@ export default function Hero({
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
+        }
+        
+        .typing-cursor {
+          color: var(--accent-secondary);
+          font-weight: 200;
+          animation: blink 0.75s infinite;
+          margin-left: 2px;
+          display: inline-block;
+        }
+        
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
         }
         
         @media (max-width: 768px) {

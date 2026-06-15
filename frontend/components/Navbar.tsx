@@ -98,7 +98,7 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
               </button>
 
               {dropdownOpen && (
-                <div className="dropdown-menu glass-panel animate-slide-up">
+                <div className="dropdown-menu glass-panel animate-slide-down">
                   <div className="dropdown-header">
                     <p className="user-fullName">{user.name}</p>
                     <p className="user-email">{user.email}</p>
@@ -175,7 +175,7 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
 
       {/* Mobile navigation drawer */}
       {mobileMenuOpen && (
-        <div className="mobile-menu-drawer glass-panel animate-slide-up">
+        <div className="mobile-menu-drawer glass-panel animate-slide-down">
           <button 
             className={`mobile-nav-link ${isExploreActive ? "active" : ""}`}
             onClick={() => { handleNav("explore"); setMobileMenuOpen(false); }}
@@ -275,6 +275,15 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
           display: flex;
           align-items: center;
           gap: 1.25rem;
+        }
+        .theme-toggle :global(svg) {
+          transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .theme-toggle:hover :global(svg) {
+          transform: rotate(45deg) scale(1.1);
+        }
+        .theme-toggle:active :global(svg) {
+          transform: rotate(180deg) scale(0.95);
         }
         .user-dropdown-container {
           position: relative;
