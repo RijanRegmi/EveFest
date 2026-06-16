@@ -46,23 +46,23 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
 
         {/* Center: Navigation Links */}
         <nav className="nav-links">
-          <button 
+          <button
             className={`nav-link ${isExploreActive ? "active" : ""}`}
             onClick={() => handleNav("explore")}
           >
             Explore
           </button>
-          
+
           <Link href="/about" className={`nav-link ${isAboutActive ? "active" : ""}`}>
             About
           </Link>
-          
+
           <Link href="/contact" className={`nav-link ${isContactActive ? "active" : ""}`}>
             Contact Us
           </Link>
-          
+
           {user && (
-            <button 
+            <button
               className={`nav-link ${isDashboardActive ? "active" : ""}`}
               onClick={() => handleNav("dashboard")}
             >
@@ -87,7 +87,7 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
           {/* User Section */}
           {user ? (
             <div className="user-dropdown-container">
-              <button 
+              <button
                 className="btn btn-secondary user-profile-btn"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
@@ -103,7 +103,8 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
                     <p className="user-fullName">{user.name}</p>
                     <p className="user-email">{user.email}</p>
                   </div>
-                  
+
+
                   <button onClick={() => { router.push("/profile"); setDropdownOpen(false); }} className="dropdown-item">
                     <User size={16} />
                     My Profile
@@ -113,12 +114,12 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
                     <LayoutDashboard size={16} />
                     My Dashboard
                   </button>
-                  
+
                   <button onClick={() => { router.push("/host-event"); setDropdownOpen(false); }} className="dropdown-item">
                     <PlusCircle size={16} />
                     Host an Event
                   </button>
-                  
+
                   {user && user.role === "admin" && (
                     <button onClick={() => { router.push("/admin"); setDropdownOpen(false); }} className="dropdown-item">
                       <ShieldCheck size={16} className="text-indigo" />
@@ -135,9 +136,9 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
                     <Info size={16} />
                     Contact Support
                   </button>
-                  
+
                   <div className="dropdown-divider"></div>
-                  
+
                   <button onClick={() => { logout(); setDropdownOpen(false); }} className="dropdown-item text-danger">
                     <LogOut size={16} />
                     Sign Out
@@ -147,13 +148,13 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
             </div>
           ) : (
             <div className="auth-btns">
-              <Link 
+              <Link
                 href="/login"
-                className="btn btn-secondary btn-login" 
+                className="btn btn-secondary btn-login"
               >
                 Log In
               </Link>
-              <Link 
+              <Link
                 href="/signup"
                 className="btn btn-primary btn-signup"
               >
@@ -163,8 +164,8 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
           )}
 
           {/* Mobile menu toggle button */}
-          <button 
-            className="mobile-menu-toggle btn-icon" 
+          <button
+            className="mobile-menu-toggle btn-icon"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle Navigation Menu"
           >
@@ -176,31 +177,31 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
       {/* Mobile navigation drawer */}
       {mobileMenuOpen && (
         <div className="mobile-menu-drawer glass-panel animate-slide-down">
-          <button 
+          <button
             className={`mobile-nav-link ${isExploreActive ? "active" : ""}`}
             onClick={() => { handleNav("explore"); setMobileMenuOpen(false); }}
           >
             Explore
           </button>
-          
-          <Link 
-            href="/about" 
+
+          <Link
+            href="/about"
             className={`mobile-nav-link ${isAboutActive ? "active" : ""}`}
             onClick={() => setMobileMenuOpen(false)}
           >
             About
           </Link>
-          
-          <Link 
-            href="/contact" 
+
+          <Link
+            href="/contact"
             className={`mobile-nav-link ${isContactActive ? "active" : ""}`}
             onClick={() => setMobileMenuOpen(false)}
           >
             Contact Us
           </Link>
-          
+
           {user && (
-            <button 
+            <button
               className={`mobile-nav-link ${isDashboardActive ? "active" : ""}`}
               onClick={() => { handleNav("dashboard"); setMobileMenuOpen(false); }}
             >
@@ -209,8 +210,8 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
           )}
 
           {user && user.role === "admin" && (
-            <Link 
-              href="/admin" 
+            <Link
+              href="/admin"
               className={`mobile-nav-link text-indigo ${isAdminActive ? "active" : ""}`}
               style={{ fontWeight: 700 }}
               onClick={() => setMobileMenuOpen(false)}
