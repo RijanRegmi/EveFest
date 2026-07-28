@@ -10,6 +10,10 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
+      {
+        protocol: "https",
         hostname: "images.unsplash.com",
       },
       {
@@ -17,6 +21,16 @@ const nextConfig = {
         hostname: "**",
       },
     ],
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: process.env.BACKEND_API_URL
+          ? `${process.env.BACKEND_API_URL}/api/:path*`
+          : "http://localhost:5000/api/:path*",
+      },
+    ];
   },
 };
 
