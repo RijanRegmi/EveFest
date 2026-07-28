@@ -7,9 +7,9 @@ import {
   deleteEvent,
   uploadEventImages,
   getEventStats,
-} from "../controllers/eventController.js";
-import { protect } from "../middlewares/authMiddleware.js";
-import { uploadEventImages as uploadMiddleware } from "../middlewares/uploadMiddleware.js";
+} from "../controllers/eventController";
+import { protect } from "../middlewares/authMiddleware";
+import { uploadEventImages as uploadMiddleware } from "../middlewares/uploadMiddleware";
 
 const router = express.Router();
 

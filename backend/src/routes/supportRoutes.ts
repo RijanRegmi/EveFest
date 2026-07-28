@@ -1,135 +1,106 @@
-import express, { Request, Response, NextFunction } from "express";
-import SupportMessage from "../models/SupportMessage.js";
-import User from "../models/User.js";
-import { protect } from "../middlewares/authMiddleware.js";
-import { admin } from "../middlewares/adminMiddleware.js";
+import express from "express";
+import SupportMessage from "../models/SupportMessage";
+import User from "../models/User";
+import { protect } from "../middlewares/authMiddleware";
+import { admin } from "../middlewares/adminMiddleware";
 
 const router = express.Router();
 
-// Apply authentication to all support chat endpoints
-router.use(protect);
+// Submit new support ticket/message
+router.post("/", async (req, res, next) => {
+  try {
+    const { name, email, subject, category, message } = req.body as {
+      name?: string;
+      email?: string;
+      subject?: string;
+      category?: string;
+      message?: string;
+    };
 
-// 1. Fetch current user's support messages (for regular users)
-router.get(
-  "/",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const messages = await SupportMessage.find({
-        userId: req.user!._id,
-      }).sort({ createdAt: 1 });
-      res.status(200).json(messages);
-    } catch (error) {
-      next(error);
+    if (!name || !email || !subject || !message) {
+      res.status(400);
+      return next(new Error("Please provide all required fields"));
     }
-  }
-);
 
-// 2. Send support message (user side)
-router.post(
-  "/",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { text } = req.body as { text: string };
-      if (!text || !text.trim()) {
-        res.status(400).json({ message: "Message content cannot be empty" });
-        return;
-      }
-
-      const newMessage = await SupportMessage.create({
-        userId: req.user!._id,
-        senderId: req.user!._id,
-        senderName: req.user!.name,
-        text: text.trim(),
-      });
-
-      res.status(201).json(newMessage);
-    } catch (error) {
-      next(error);
+    let userId: string | null = null;
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      userId = existingUser._id.toString();
     }
+
+    const ticketCode = `TKT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const supportMsg = await SupportMessage.create({
+      user: userId,
+      name,
+      email: email.toLowerCase(),
+      subject,
+      category: category || "General Query",
+      message,
+      ticketCode,
+      status: "Open",
+    });
+
+    res.status(201).json({
+      message: "Support ticket created successfully",
+      ticketCode: supportMsg.ticketCode,
+      supportMessage: supportMsg,
+    });
+  } catch (error) {
+    res.status(500);
+    next(error);
   }
-);
+});
 
-// 3. Fetch all active support threads (admin only)
-router.get(
-  "/admin/threads",
-  admin,
-  async (_req: Request, res: Response, next: NextFunction) => {
-    try {
-      const threadUserIds = await SupportMessage.distinct("userId");
+// User or Admin get support messages
+router.get("/my-tickets", protect, async (req, res, next) => {
+  try {
+    const userEmail = req.user!.email;
+    const tickets = await SupportMessage.find({ email: userEmail }).sort({
+      createdAt: -1,
+    });
+    res.status(200).json(tickets);
+  } catch (error) {
+    res.status(500);
+    next(error);
+  }
+});
 
-      const threads = await Promise.all(
-        threadUserIds.map(async (userId) => {
-          const userDetails = await User.findById(userId).select(
-            "name email username"
-          );
-          const latestMessage = await SupportMessage.findOne({ userId })
-            .sort({ createdAt: -1 })
-            .select("text createdAt");
+// Admin: List all support tickets
+router.get("/admin/all", protect, admin, async (_req, res, next) => {
+  try {
+    const tickets = await SupportMessage.find({}).sort({ createdAt: -1 });
+    res.status(200).json(tickets);
+  } catch (error) {
+    res.status(500);
+    next(error);
+  }
+});
 
-          return {
-            userId,
-            user: userDetails || { name: "Deleted User", email: "N/A" },
-            latestMessage: latestMessage || { text: "", createdAt: new Date() },
-          };
-        })
-      );
+// Admin: Respond or update ticket status
+router.patch("/admin/:id/respond", protect, admin, async (req, res, next) => {
+  try {
+    const { status, adminResponse } = req.body as {
+      status?: "Open" | "In Progress" | "Resolved" | "Closed";
+      adminResponse?: string;
+    };
 
-      // Sort threads by the latest message timestamp descending
-      threads.sort(
-        (a, b) =>
-          new Date(b.latestMessage.createdAt as Date).getTime() -
-          new Date(a.latestMessage.createdAt as Date).getTime()
-      );
-
-      res.status(200).json(threads);
-    } catch (error) {
-      next(error);
+    const ticket = await SupportMessage.findById(req.params.id);
+    if (!ticket) {
+      res.status(404);
+      return next(new Error("Ticket not found"));
     }
+
+    if (status) ticket.status = status;
+    if (adminResponse) ticket.adminResponse = adminResponse;
+
+    await ticket.save();
+
+    res.status(200).json({ message: "Ticket updated successfully", ticket });
+  } catch (error) {
+    res.status(500);
+    next(error);
   }
-);
-
-// 4. Fetch specific thread logs (admin only)
-router.get(
-  "/admin/threads/:userId",
-  admin,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const messages = await SupportMessage.find({
-        userId: req.params.userId,
-      }).sort({ createdAt: 1 });
-      res.status(200).json(messages);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-// 5. Send support reply (admin side replying to user thread)
-router.post(
-  "/admin/reply/:userId",
-  admin,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { text } = req.body as { text: string };
-      if (!text || !text.trim()) {
-        res
-          .status(400)
-          .json({ message: "Reply message cannot be empty" });
-        return;
-      }
-
-      const newMessage = await SupportMessage.create({
-        userId: req.params.userId,
-        senderId: req.user!._id,
-        senderName: `Support Admin (${req.user!.name})`,
-        text: text.trim(),
-      });
-
-      res.status(201).json(newMessage);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
+});
 
 export default router;

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import Booking, { IBookingDocument } from "../models/Booking.js";
-import Event from "../models/Event.js";
+import Booking, { IBookingDocument } from "../models/Booking";
+import Event from "../models/Event";
 
 export const createBooking = async (
   eventId: string,

@@ -1,10 +1,15 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
 export interface ISupportMessage {
-  userId: mongoose.Types.ObjectId;
-  senderId: mongoose.Types.ObjectId;
-  senderName: string;
-  text: string;
+  user?: mongoose.Types.ObjectId | string | null;
+  name: string;
+  email: string;
+  subject: string;
+  category: string;
+  message: string;
+  ticketCode: string;
+  status: "Open" | "In Progress" | "Resolved" | "Closed";
+  adminResponse?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,24 +19,44 @@ export interface ISupportMessageModel extends Model<ISupportMessageDocument> {}
 
 const supportMessageSchema = new Schema<ISupportMessageDocument>(
   {
-    userId: {
+    user: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null,
     },
-    senderId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    senderName: {
+    name: {
       type: String,
       required: true,
     },
-    text: {
+    email: {
       type: String,
-      required: [true, "Message content is required"],
+      required: true,
+    },
+    subject: {
+      type: String,
+      required: true,
+    },
+    category: {
+      type: String,
+      default: "General Query",
+    },
+    message: {
+      type: String,
+      required: true,
       trim: true,
+    },
+    ticketCode: {
+      type: String,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["Open", "In Progress", "Resolved", "Closed"],
+      default: "Open",
+    },
+    adminResponse: {
+      type: String,
+      default: "",
     },
   },
   {

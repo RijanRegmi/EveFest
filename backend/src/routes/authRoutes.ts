@@ -1,19 +1,19 @@
 import express from "express";
 import {
-  registerUser,
-  loginUser,
-  getUserProfile,
-  checkAvailability,
-  updateUserProfile,
-} from "../controllers/authController.js";
-import { protect } from "../middlewares/authMiddleware.js";
+  register,
+  login,
+  getProfile,
+  checkAvailabilityHandler,
+  updateProfile,
+} from "../controllers/authController";
+import { protect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-router.post("/register", registerUser);
-router.post("/login", loginUser);
-router.get("/profile", protect, getUserProfile);
-router.put("/profile", protect, updateUserProfile);
-router.post("/check-availability", checkAvailability);
+router.post("/register", register);
+router.post("/login", login);
+router.get("/profile", protect, getProfile);
+router.put("/profile", protect, updateProfile);
+router.get("/check-availability", checkAvailabilityHandler);
 
 export default router;

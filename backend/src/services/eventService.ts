@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Event, { IEventDocument } from "../models/Event.js";
+import Event, { IEventDocument } from "../models/Event";
 
 interface EventData {
   title?: string;

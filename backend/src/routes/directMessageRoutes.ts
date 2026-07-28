@@ -2,17 +2,14 @@ import express from "express";
 import {
   getDirectMessages,
   sendDirectMessage,
-  markThreadAsSeen,
-} from "../controllers/directMessageController.js";
-import { protect } from "../middlewares/authMiddleware.js";
+  getConversations,
+} from "../controllers/directMessageController";
+import { protect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-// All direct messages routes are protected
-router.use(protect);
-
-router.get("/event/:eventId", getDirectMessages);
-router.post("/event/:eventId", sendDirectMessage);
-router.put("/seen/:eventId/:attendeeId", markThreadAsSeen);
+router.get("/conversations", protect, getConversations);
+router.get("/:otherUserId", protect, getDirectMessages);
+router.post("/:otherUserId", protect, sendDirectMessage);
 
 export default router;

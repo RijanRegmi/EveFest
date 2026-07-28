@@ -1,109 +1,82 @@
-import { Request, Response } from "express";
-import GroupChatMessage from "../models/GroupChatMessage.js";
-import Booking from "../models/Booking.js";
-import Event from "../models/Event.js";
+import { Request, Response, NextFunction } from "express";
+import GroupChatMessage from "../models/GroupChatMessage";
+import Booking from "../models/Booking";
+import Event from "../models/Event";
 
-/**
- * GET /api/chat/:eventId
- * Returns all group chat messages for an event.
- * Requires: user must be a registered attendee (have a booking for this event) or the event host.
- */
-export const getGroupMessages = async (
+export const getGroupChatMessages = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const { eventId } = req.params;
+    const userId = req.user!._id;
 
-    const booking = await Booking.findOne({
-      user: req.user!._id,
-      event: eventId,
-    });
-
-    let isHost = false;
-    if (!booking) {
-      const event = await Event.findById(eventId);
-      if (
-        event &&
-        (event.hostId?.toString() === req.user!._id.toString() ||
-          String(event.hostId) === String(req.user!._id))
-      ) {
-        isHost = true;
-      }
+    const event = await Event.findById(eventId);
+    if (!event) {
+      res.status(404);
+      return next(new Error("Event not found"));
     }
 
-    if (!booking && !isHost) {
-      res.status(403).json({
-        message:
-          "Only registered attendees or the event host can view group chat.",
-      });
-      return;
+    const isHost = event.hostId.toString() === userId.toString();
+    const hasBooking = await Booking.findOne({ user: userId, event: eventId });
+
+    if (!isHost && !hasBooking) {
+      res.status(403);
+      return next(new Error("Access denied. You must be registered for this event to access the group chat."));
     }
 
-    const messages = await GroupChatMessage.find({ eventId })
+    const messages = await GroupChatMessage.find({ event: eventId })
       .sort({ createdAt: 1 })
-      .limit(200);
+      .limit(100);
 
-    res.json(messages);
+    res.status(200).json(messages);
   } catch (error) {
-    console.error("[GroupChat] getGroupMessages error:", error);
-    res.status(500).json({ message: "Server error fetching group chat." });
+    res.status(500);
+    next(error);
   }
 };
 
-/**
- * POST /api/chat/:eventId
- * Send a group chat message.
- * Requires: user must be a registered attendee or the event host.
- */
-export const sendGroupMessage = async (
+export const postGroupChatMessage = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const { eventId } = req.params;
-    const { text } = req.body as { text: string };
+    const { text } = req.body as { text?: string };
+    const user = req.user!;
 
-    if (!text || !text.trim()) {
-      res.status(400).json({ message: "Message text is required." });
-      return;
+    if (!text || text.trim() === "") {
+      res.status(400);
+      return next(new Error("Message text cannot be empty"));
     }
 
-    const booking = await Booking.findOne({
-      user: req.user!._id,
-      event: eventId,
-    });
-
-    let isHost = false;
-    if (!booking) {
-      const event = await Event.findById(eventId);
-      if (
-        event &&
-        (event.hostId?.toString() === req.user!._id.toString() ||
-          String(event.hostId) === String(req.user!._id))
-      ) {
-        isHost = true;
-      }
+    const event = await Event.findById(eventId);
+    if (!event) {
+      res.status(404);
+      return next(new Error("Event not found"));
     }
 
-    if (!booking && !isHost) {
-      res.status(403).json({
-        message:
-          "Only registered attendees or the event host can send messages.",
-      });
-      return;
+    const isHost = event.hostId.toString() === user._id.toString();
+    const hasBooking = await Booking.findOne({ user: user._id, event: eventId });
+
+    if (!isHost && !hasBooking) {
+      res.status(403);
+      return next(new Error("Access denied. You must be registered for this event to post in the group chat."));
     }
 
     const message = await GroupChatMessage.create({
-      eventId,
-      senderId: req.user!._id,
-      senderName: req.user!.name,
+      event: eventId,
+      sender: user._id,
+      senderName: user.name,
+      senderRole: isHost ? "Host" : "Attendee",
       text: text.trim(),
     });
 
     res.status(201).json(message);
   } catch (error) {
-    console.error("[GroupChat] sendGroupMessage error:", error);
-    res.status(500).json({ message: "Server error sending message." });
+    res.status(500);
+    next(error);
   }
 };

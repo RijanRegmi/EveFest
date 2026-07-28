@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from "express";
-import * as eventService from "../services/eventService.js";
-import Event from "../models/Event.js";
-import Booking from "../models/Booking.js";
+import * as eventService from "../services/eventService";
+import Event from "../models/Event";
+import Booking from "../models/Booking";
 
 export const getEvents = async (
-  req: Request,
+  _req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -165,7 +165,7 @@ export const uploadEventImages = async (
 };
 
 export const getEventStats = async (
-  req: Request,
+  _req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {

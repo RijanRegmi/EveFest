@@ -1,16 +1,15 @@
 import express from "express";
 import {
-  getGroupMessages,
-  sendGroupMessage,
-} from "../controllers/groupChatController.js";
-import { protect } from "../middlewares/authMiddleware.js";
+  getGroupChatMessages,
+  postGroupChatMessage,
+} from "../controllers/groupChatController";
+import { protect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-// GET /api/chat/:eventId  — fetch all messages for an event
-router.get("/:eventId", protect, getGroupMessages);
-
-// POST /api/chat/:eventId — send a message to event group chat
-router.post("/:eventId", protect, sendGroupMessage);
+router
+  .route("/event/:eventId")
+  .get(protect, getGroupChatMessages)
+  .post(protect, postGroupChatMessage);
 
 export default router;

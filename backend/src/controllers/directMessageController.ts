@@ -1,175 +1,99 @@
 import { Request, Response, NextFunction } from "express";
-import DirectMessage from "../models/DirectMessage.js";
-import Event from "../models/Event.js";
-import Booking from "../models/Booking.js";
-import User from "../models/User.js";
+import DirectMessage from "../models/DirectMessage";
+import User from "../models/User";
 
-/**
- * GET /api/direct-messages/event/:eventId
- * Retrieve direct support messages for an event.
- * If requesting user is the host: returns all direct messages for this event.
- * If requesting user is attendee: returns only direct messages between them and host.
- */
 export const getDirectMessages = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { eventId } = req.params;
-    const userId = req.user!._id;
+    const currentUserId = req.user!._id.toString();
+    const { otherUserId } = req.params;
 
-    const event = await Event.findById(eventId);
-    if (!event) {
-      res.status(404).json({ message: "Event not found." });
-      return;
-    }
-
-    const isHost = event.hostId.toString() === userId.toString();
-
-    const booking = await Booking.findOne({ user: userId, event: eventId });
-
-    if (!isHost && !booking) {
-      res.status(403).json({
-        message:
-          "Only the host or registered attendees can access direct support messages.",
-      });
-      return;
-    }
-
-    let messages;
-    if (isHost) {
-      messages = await DirectMessage.find({ eventId }).sort({ createdAt: 1 });
-    } else {
-      messages = await DirectMessage.find({
-        eventId,
-        attendeeId: userId,
-      }).sort({ createdAt: 1 });
-    }
+    const messages = await DirectMessage.find({
+      $or: [
+        { senderId: currentUserId, attendeeId: otherUserId },
+        { senderId: otherUserId, attendeeId: currentUserId },
+      ],
+    }).sort({ createdAt: 1 });
 
     res.status(200).json(messages);
   } catch (error) {
+    res.status(500);
     next(error);
   }
 };
 
-/**
- * POST /api/direct-messages/event/:eventId
- * Send a direct support message.
- */
 export const sendDirectMessage = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { eventId } = req.params;
-    const {
-      text,
-      attendeeId: bodyAttendeeId,
-      attendeeName: bodyAttendeeName,
-    } = req.body as {
-      text: string;
-      attendeeId?: string;
-      attendeeName?: string;
-    };
-    const userId = req.user!._id;
+    const sender = req.user!;
+    const { otherUserId } = req.params;
+    const { text, eventId } = req.body as { text?: string; eventId?: string };
 
-    if (!text || !text.trim()) {
-      res.status(400).json({ message: "Message content cannot be empty." });
-      return;
+    if (!text || text.trim() === "") {
+      res.status(400);
+      return next(new Error("Message text cannot be empty"));
     }
 
-    const event = await Event.findById(eventId);
-    if (!event) {
-      res.status(404).json({ message: "Event not found." });
-      return;
+    const recipient = await User.findById(otherUserId);
+    if (!recipient) {
+      res.status(404);
+      return next(new Error("Recipient user not found"));
     }
 
-    const isHost = event.hostId.toString() === userId.toString();
-
-    let targetAttendeeId: unknown;
-    let targetAttendeeName: string;
-
-    if (isHost) {
-      if (!bodyAttendeeId) {
-        res.status(400).json({
-          message: "Attendee ID is required when host sends a reply.",
-        });
-        return;
-      }
-      targetAttendeeId = bodyAttendeeId;
-      targetAttendeeName = bodyAttendeeName ?? "";
-      if (!targetAttendeeName) {
-        const attendee = await User.findById(targetAttendeeId);
-        targetAttendeeName = attendee ? attendee.name : "Attendee";
-      }
-    } else {
-      const booking = await Booking.findOne({ user: userId, event: eventId });
-      if (!booking) {
-        res
-          .status(403)
-          .json({ message: "Only registered attendees can message the host." });
-        return;
-      }
-      targetAttendeeId = userId;
-      targetAttendeeName = req.user!.name;
-    }
-
-    const newMessage = await DirectMessage.create({
-      eventId,
-      attendeeId: targetAttendeeId,
-      attendeeName: targetAttendeeName,
-      senderId: userId,
-      senderName: req.user!.name,
+    const message = await DirectMessage.create({
+      eventId: eventId || sender._id,
+      senderId: sender._id,
+      senderName: sender.name,
+      attendeeId: recipient._id,
+      attendeeName: recipient.name,
       text: text.trim(),
     });
 
-    res.status(201).json(newMessage);
+    res.status(201).json(message);
   } catch (error) {
+    res.status(500);
     next(error);
   }
 };
 
-/**
- * PUT /api/direct-messages/seen/:eventId/:attendeeId
- * Mark all messages in a thread as seen.
- */
-export const markThreadAsSeen = async (
+export const getConversations = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { eventId, attendeeId } = req.params;
-    const userId = req.user!._id;
+    const currentUserId = req.user!._id;
 
-    const event = await Event.findById(eventId);
-    if (!event) {
-      res.status(404).json({ message: "Event not found." });
-      return;
+    const messages = await DirectMessage.find({
+      $or: [{ senderId: currentUserId }, { attendeeId: currentUserId }],
+    }).sort({ createdAt: -1 });
+
+    const conversationsMap = new Map<string, { otherUserId: string; otherUserName: string; lastMessage: string; updatedAt: Date }>();
+
+    for (const msg of messages) {
+      const isSender = msg.senderId.toString() === currentUserId.toString();
+      const otherUserId = isSender ? msg.attendeeId.toString() : msg.senderId.toString();
+      const otherUserName = isSender ? msg.attendeeName : msg.senderName;
+
+      if (!conversationsMap.has(otherUserId)) {
+        conversationsMap.set(otherUserId, {
+          otherUserId,
+          otherUserName,
+          lastMessage: msg.text,
+          updatedAt: msg.createdAt,
+        });
+      }
     }
 
-    const isHost = event.hostId.toString() === userId.toString();
-
-    if (!isHost && userId.toString() !== attendeeId.toString()) {
-      res
-        .status(403)
-        .json({ message: "Not authorized to update seen status." });
-      return;
-    }
-
-    const query = {
-      eventId,
-      attendeeId,
-      senderId: { $ne: userId },
-      seen: false,
-    };
-
-    await DirectMessage.updateMany(query, { $set: { seen: true } });
-
-    res.status(200).json({ message: "Thread marked as seen." });
+    res.status(200).json(Array.from(conversationsMap.values()));
   } catch (error) {
+    res.status(500);
     next(error);
   }
 };
