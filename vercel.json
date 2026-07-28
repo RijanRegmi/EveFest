@@ -8,5 +8,9 @@
       "root": "backend",
       "entrypoint": "api/index.ts"
     }
-  }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "backend" },
+    { "src": "/(.*)", "dest": "frontend" }
+  ]
 }
