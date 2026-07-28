@@ -26,7 +26,9 @@ export const getGroupChatMessages = async (
       return next(new Error("Access denied. You must be registered for this event to access the group chat."));
     }
 
-    const messages = await GroupChatMessage.find({ event: eventId })
+    const messages = await GroupChatMessage.find({
+      $or: [{ eventId: eventId }, { event: eventId }],
+    })
       .sort({ createdAt: 1 })
       .limit(100);
 
@@ -67,10 +69,9 @@ export const postGroupChatMessage = async (
     }
 
     const message = await GroupChatMessage.create({
-      event: eventId,
-      sender: user._id,
-      senderName: user.name,
-      senderRole: isHost ? "Host" : "Attendee",
+      eventId: eventId,
+      senderId: user._id,
+      senderName: user.name || user.username || "Attendee",
       text: text.trim(),
     });
 

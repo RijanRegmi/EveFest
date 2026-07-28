@@ -7,8 +7,9 @@ import { protect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
+// Support both /api/chat/:eventId and /api/chat/event/:eventId
 router
-  .route("/event/:eventId")
+  .route(["/:eventId", "/event/:eventId"])
   .get(protect, getGroupChatMessages)
   .post(protect, postGroupChatMessage);
 

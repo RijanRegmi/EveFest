@@ -20,7 +20,10 @@ export async function fetchSupportMessages(
   token: string
 ): Promise<ISupportMessage[]> {
   try {
-    return await request<ISupportMessage[]>("/support");
+    const res = await request<any>("/support");
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.tickets)) return res.tickets;
+    return [];
   } catch (error) {
     if (isNetworkError(error)) {
       const messages = JSON.parse(
@@ -29,7 +32,7 @@ export async function fetchSupportMessages(
       const userId = token.replace("mock_token_", "");
       return messages.filter((m) => m.userId === userId);
     }
-    throw error;
+    return [];
   }
 }
 
@@ -91,7 +94,7 @@ export async function fetchAdminThreads(
         localStorage.getItem("mock_users") || "[]"
       ) as Array<{ _id: string; name: string; email: string }>;
 
-      const threadUserIds = [...new Set(messages.map((m) => m.userId))];
+      const threadUserIds = [...new Set(messages.map((m) => m.userId).filter((id): id is string => Boolean(id)))];
 
       const threads: SupportThread[] = threadUserIds.map((userId) => {
         const user = mockUsers.find((u) => u._id === userId) || {
@@ -99,11 +102,11 @@ export async function fetchAdminThreads(
           email: "N/A",
         };
         const userMessages = messages.filter((m) => m.userId === userId);
-        const latestMessage =
-          userMessages[userMessages.length - 1] || {
-            text: "",
-            createdAt: new Date().toISOString(),
-          };
+        const lastMsg = userMessages[userMessages.length - 1];
+        const latestMessage = {
+          text: lastMsg ? (lastMsg.text || lastMsg.message || "") : "",
+          createdAt: lastMsg ? lastMsg.createdAt : new Date().toISOString(),
+        };
 
         return {
           userId,

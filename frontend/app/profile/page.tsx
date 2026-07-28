@@ -47,7 +47,9 @@ function ProfilePageContent() {
         phoneNumber: user.phoneNumber || "",
         password: ""
       });
-      getSupportMessages();
+      getSupportMessages().catch((err) => {
+        console.warn("Support messages non-fatal load warning:", err);
+      });
     }
   }, [user]);
 
@@ -68,9 +70,10 @@ function ProfilePageContent() {
     e.preventDefault();
     setLoading(true);
     
-    // Only send password if entered
+    // Do not send email in profile updates (email is read-only)
     const payload: Record<string, string> = { ...formData };
-    if (!payload.password.trim()) {
+    delete payload.email;
+    if (!payload.password || !payload.password.trim()) {
       delete payload.password;
     }
 
@@ -100,9 +103,9 @@ function ProfilePageContent() {
           <div className="profile-sidebar-col">
             <div className="user-profile-hero glass-panel">
               <div className="avatar-large">
-                {user.name.charAt(0).toUpperCase()}
+                {((user.name || user.username || user.email || "U").charAt(0)).toUpperCase()}
               </div>
-              <h2 className="user-display-name">{user.name}</h2>
+              <h2 className="user-display-name">{user.name || user.username || "User"}</h2>
               <p className="user-display-username">@{user.username}</p>
               
               <span className={`role-badge ${user.role}`}>
@@ -186,16 +189,23 @@ function ProfilePageContent() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Email Address</label>
-                  <div className="input-with-icon">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>Email Address</label>
+                    <span style={{ fontSize: "0.72rem", color: "var(--fg-tertiary)", display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "rgba(255, 255, 255, 0.05)", padding: "0.15rem 0.5rem", borderRadius: "4px", border: "1px solid var(--glass-border)" }}>
+                      <Lock size={12} /> Read-only
+                    </span>
+                  </div>
+                  <div className="input-with-icon" style={{ opacity: 0.7, cursor: "not-allowed" }}>
                     <Mail size={18} className="input-icon" />
                     <input 
                       type="email" 
                       name="email"
                       value={formData.email}
-                      onChange={handleChange}
+                      disabled
+                      readOnly
                       className="form-control" 
-                      required 
+                      style={{ cursor: "not-allowed", background: "rgba(255, 255, 255, 0.02)" }}
+                      title="Your registered email address cannot be modified"
                     />
                   </div>
                 </div>

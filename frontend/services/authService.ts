@@ -112,10 +112,17 @@ export async function registerApi(
 
 export async function getProfileApi(token: string): Promise<IUserWithBookings> {
   try {
-    return await request<IUserWithBookings>("/auth/profile", {
+    const res = await request<any>("/auth/profile", {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (res && res.user && typeof res.user === "object" && (res.user.email || res.user.name || res.user._id)) {
+      return {
+        ...res.user,
+        bookings: res.bookings || res.user.bookings || [],
+      } as IUserWithBookings;
+    }
+    return res as IUserWithBookings;
   } catch (error) {
     if (isNetworkError(error)) {
       if (!token.startsWith("mock_token_")) {

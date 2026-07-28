@@ -92,16 +92,18 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
                 <div className="avatar-circle">
-                  {user.name.charAt(0).toUpperCase()}
+                  {((user.name || user.username || user.email || "U").charAt(0)).toUpperCase()}
                 </div>
-                <span className="user-name">{user.name.split(" ")[0]}</span>
+                <span className="user-name">
+                  {(user.name || user.username || user.email || "User").split(" ")[0]}
+                </span>
               </button>
 
               {dropdownOpen && (
                 <div className="dropdown-menu glass-panel animate-slide-down">
                   <div className="dropdown-header">
-                    <p className="user-fullName">{user.name}</p>
-                    <p className="user-email">{user.email}</p>
+                    <p className="user-fullName">{user.name || user.username || "User"}</p>
+                    <p className="user-email">{user.email || ""}</p>
                   </div>
 
 

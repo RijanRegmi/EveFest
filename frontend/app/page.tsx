@@ -10,6 +10,7 @@ import AuthModal from "../components/AuthModal";
 import Dashboard from "../components/Dashboard";
 import ScrollReveal from "../components/ScrollReveal";
 import { Info, Shield, Award, CalendarDays, Sparkles } from "lucide-react";
+import { isEventExpired } from "../utils/dateUtils";
 import type { IEvent } from "@/types";
 
 function HomeContent() {
@@ -30,8 +31,11 @@ function HomeContent() {
   const [filterOnline, setFilterOnline] = useState("all"); // 'all' | 'online' | 'offline'
   const [filterPrice, setFilterPrice] = useState("all"); // 'all' | 'free' | 'paid'
 
-  // Filter events dynamically
+  // Filter events dynamically (hide expired events from main explore view)
   const filteredEvents = events.filter((evt) => {
+    // 0. Expiry Check - Hide expired events from main explore view
+    if (isEventExpired(evt.date)) return false;
+
     // 1. Text Search (title, description, hostName)
     const matchesSearch = 
       evt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

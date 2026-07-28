@@ -3,16 +3,26 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import { useRouter } from "next/navigation";
-import { Ticket, Users, Calendar, MapPin, QrCode, Download, Trash2, ShieldCheck, UserCheck, Edit, X } from "lucide-react";
+import { Ticket, Users, Calendar, MapPin, QrCode, Download, Trash2, ShieldCheck, UserCheck, Edit, X, Clock, History } from "lucide-react";
+import { isEventExpired } from "../utils/dateUtils";
 
 export default function Dashboard() {
   const { user, events, bookings, cancelBooking, showToast, deleteEvent } = useApp();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"tickets" | "hosted">("tickets");
+  const [hostedFilter, setHostedFilter] = useState<"all" | "active" | "history">("all");
   const [attendeeModal, setAttendeeModal] = useState<{ open: boolean; eventId: string | null }>({ open: false, eventId: null });
 
   // Filter events hosted by this user
   const hostedEvents = events.filter((e) => e.hostId === user?._id);
+  const activeHostedEvents = hostedEvents.filter((e) => !isEventExpired(e.date));
+  const pastHostedEvents = hostedEvents.filter((e) => isEventExpired(e.date));
+
+  const displayedHostedEvents = hostedEvents.filter((e) => {
+    if (hostedFilter === "active") return !isEventExpired(e.date);
+    if (hostedFilter === "history") return isEventExpired(e.date);
+    return true;
+  });
 
   const handleCancelTicket = async (bookingId: string) => {
     if (window.confirm("Are you sure you want to cancel this ticket booking?")) {
@@ -40,7 +50,7 @@ export default function Dashboard() {
     <div className="dashboard-section container animate-fade-in">
       <div className="dashboard-header">
         <h2 className="dashboard-title">
-          Welcome back, <span className="text-gradient">{user?.name}</span>
+          Welcome back, <span className="text-gradient">{user?.name || user?.username || "User"}</span>
         </h2>
         <p className="dashboard-subtitle">Manage your event registrations, hosted events, and digital ticket passes.</p>
       </div>
@@ -144,11 +154,41 @@ export default function Dashboard() {
         {/* HOSTED EVENTS TAB */}
         {activeTab === "hosted" && (
           <div className="hosted-list">
-            {hostedEvents.length === 0 ? (
+            {/* Sub-filter Controls */}
+            <div className="sub-filter-row" style={{ display: "flex", gap: "0.75rem", marginBottom: "1.25rem" }}>
+              <button
+                className={`sub-filter-btn ${hostedFilter === "all" ? "active" : ""}`}
+                onClick={() => setHostedFilter("all")}
+              >
+                All Hosted ({hostedEvents.length})
+              </button>
+              <button
+                className={`sub-filter-btn ${hostedFilter === "active" ? "active" : ""}`}
+                onClick={() => setHostedFilter("active")}
+              >
+                <Clock size={14} />
+                Active &amp; Upcoming ({activeHostedEvents.length})
+              </button>
+              <button
+                className={`sub-filter-btn ${hostedFilter === "history" ? "active" : ""}`}
+                onClick={() => setHostedFilter("history")}
+              >
+                <History size={14} />
+                Event History ({pastHostedEvents.length})
+              </button>
+            </div>
+
+            {displayedHostedEvents.length === 0 ? (
               <div className="empty-state glass-panel">
                 <Users size={48} className="empty-icon" />
-                <h3>No Hosted Events</h3>
-                <p>You haven&apos;t hosted any events yet. Click &quot;Host an Event&quot; in the navigation bar to create one.</p>
+                <h3>No Events Found</h3>
+                <p>
+                  {hostedFilter === "history" 
+                    ? "You don't have any past/expired hosted events yet." 
+                    : hostedFilter === "active" 
+                    ? "You don't have any active upcoming events." 
+                    : "You haven't hosted any events yet. Click 'Host an Event' in the navigation bar to create one."}
+                </p>
               </div>
             ) : (
               <div className="hosted-table-wrapper glass-panel">
@@ -156,6 +196,7 @@ export default function Dashboard() {
                   <thead>
                     <tr>
                       <th>Event Details</th>
+                      <th>Status</th>
                       <th>Format</th>
                       <th>Price</th>
                       <th>Registered</th>
@@ -164,68 +205,76 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {hostedEvents.map((evt) => (
-                      <tr key={evt._id} className="table-row">
-                        <td>
-                          <div className="table-event-info">
-                            <span className="table-event-title">{evt.title}</span>
-                            <span className="table-event-date">{evt.date}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`format-badge ${evt.isOnline ? "online" : "offline"}`}>
-                            {evt.isOnline ? "Virtual" : "In-Person"}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="table-price">{evt.price === 0 ? "Free" : `$${evt.price}`}</span>
-                        </td>
-                        <td>
-                          <button 
-                            className="table-attendee-count-btn"
-                            onClick={() => setAttendeeModal({ open: true, eventId: evt._id })}
-                          >
-                            <UserCheck size={14} />
-                            {evt.registeredCount || 0} Registered
-                          </button>
-                        </td>
-                        <td>
-                          {evt.proofDoc ? (
-                            <div className="legal-proof-link">
-                              <ShieldCheck size={14} className="text-success" />
-                              <span className="proof-name" title={evt.proofDoc}>{evt.proofDoc.slice(0, 15)}...</span>
-                              <button 
-                                className="btn-icon-small" 
-                                onClick={() => showToast(`Downloaded ${evt.proofDoc} (mock file)`)}
-                                title="Download uploaded file proof"
+                    {displayedHostedEvents.map((evt) => {
+                      const expired = isEventExpired(evt.date);
+                      return (
+                        <tr key={evt._id} className={`table-row ${expired ? "expired-row" : ""}`}>
+                          <td>
+                            <div className="table-event-info">
+                              <span className="table-event-title">{evt.title}</span>
+                              <span className="table-event-date">{evt.date}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`status-pill ${expired ? "expired" : "upcoming"}`}>
+                              {expired ? "Expired (History)" : "Active"}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`format-badge ${evt.isOnline ? "online" : "offline"}`}>
+                              {evt.isOnline ? "Virtual" : "In-Person"}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="table-price">{evt.price === 0 ? "Free" : `$${evt.price}`}</span>
+                          </td>
+                          <td>
+                            <button 
+                              className="table-attendee-count-btn"
+                              onClick={() => setAttendeeModal({ open: true, eventId: evt._id })}
+                            >
+                              <UserCheck size={14} />
+                              {evt.registeredCount || 0} Registered
+                            </button>
+                          </td>
+                          <td>
+                            {evt.proofDoc ? (
+                              <div className="legal-proof-link">
+                                <ShieldCheck size={14} className="text-success" />
+                                <span className="proof-name" title={evt.proofDoc}>{evt.proofDoc.slice(0, 15)}...</span>
+                                <button 
+                                  className="btn-icon-small" 
+                                  onClick={() => showToast(`Downloaded ${evt.proofDoc} (mock file)`)}
+                                  title="Download uploaded file proof"
+                                >
+                                  <Download size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="not-verified">None Uploaded</span>
+                            )}
+                          </td>
+                          <td>
+                            <div className="table-actions">
+                              <button
+                                className="btn btn-secondary btn-icon-small edit-action-btn"
+                                onClick={() => router.push(`/edit-event/${evt._id}`)}
+                                title="Edit Event"
                               >
-                                <Download size={12} />
+                                <Edit size={14} />
+                              </button>
+                              <button 
+                                className="btn btn-secondary btn-icon-small delete-btn"
+                                onClick={() => handleDeleteEvent(evt._id)}
+                                title="Delete Event"
+                              >
+                                <Trash2 size={14} />
                               </button>
                             </div>
-                          ) : (
-                            <span className="not-verified">None Uploaded</span>
-                          )}
-                        </td>
-                        <td>
-                          <div className="table-actions">
-                            <button
-                              className="btn btn-secondary btn-icon-small edit-action-btn"
-                              onClick={() => router.push(`/edit-event/${evt._id}`)}
-                              title="Edit Event"
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <button 
-                              className="btn btn-secondary btn-icon-small delete-btn"
-                              onClick={() => handleDeleteEvent(evt._id)}
-                              title="Delete Event"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -314,6 +363,55 @@ export default function Dashboard() {
         
         .tab-btn.active {
           border-color: var(--accent-primary);
+        }
+
+        /* Sub Filter buttons */
+        .sub-filter-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          padding: 0.45rem 0.85rem;
+          font-size: 0.82rem;
+          font-weight: 700;
+          border-radius: var(--border-radius-sm);
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--glass-border);
+          color: var(--fg-secondary);
+          transition: var(--transition-fast);
+        }
+        .sub-filter-btn:hover {
+          color: var(--fg-primary);
+          border-color: var(--glass-border-hover);
+        }
+        .sub-filter-btn.active {
+          background: rgba(99, 102, 241, 0.12);
+          border-color: var(--accent-primary);
+          color: var(--accent-primary);
+        }
+
+        /* Status Pills */
+        .status-pill {
+          font-size: 0.72rem;
+          font-weight: 800;
+          padding: 0.2rem 0.55rem;
+          border-radius: var(--border-radius-full);
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+        }
+        .status-pill.upcoming {
+          background: rgba(16, 185, 129, 0.12);
+          color: var(--color-success);
+          border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+        .status-pill.expired {
+          background: rgba(239, 68, 68, 0.1);
+          color: #f87171;
+          border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        .expired-row {
+          opacity: 0.8;
+          background: rgba(0, 0, 0, 0.15);
         }
         
         /* Tickets View styling */

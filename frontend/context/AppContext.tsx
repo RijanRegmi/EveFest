@@ -22,6 +22,7 @@ import {
   fetchAdminThreadMessages,
   sendAdminReply
 } from "@/services/supportService";
+import { request } from "@/services/api";
 import type { 
   IUser, 
   IUserWithBookings, 
@@ -163,7 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("token", data.token);
       setUser(data.user);
       setBookings(data.user.bookings || []);
-      showToast(`Welcome back, ${data.user.name}!`);
+      showToast(`Welcome back, ${data.user?.name || data.user?.username || "User"}!`);
       return true;
     } catch (error: any) {
       showToast(error.message || "Login failed. Please check credentials.", "error");
@@ -177,7 +178,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("token", data.token);
       setUser(data.user);
       setBookings([]);
-      showToast(`Account created! Welcome to EveFest, ${data.user.name}`);
+      showToast(`Account created! Welcome to EveFest, ${data.user?.name || data.user?.username || "User"}`);
       return true;
     } catch (error: any) {
       showToast(error.message || "Registration failed.", "error");
@@ -485,21 +486,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // 6. Group Chat Room actions — backed by real API
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-
-  // Fetch group chat messages for an event from the server
   const fetchGroupMessages = async (eventId: string) => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-      const res = await fetch(`${API_URL}/chat/${eventId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return; // silently ignore (e.g. not a registered attendee)
-      const msgs = await res.json();
-      setChatMessages((prev) => ({ ...prev, [eventId]: msgs }));
+      const msgs = await request<IGroupChatMessage[]>(`/chat/${eventId}`);
+      if (Array.isArray(msgs)) {
+        setChatMessages((prev) => ({ ...prev, [eventId]: msgs }));
+      }
     } catch (err) {
-      console.error("[GroupChat] fetch error:", err);
+      console.warn("[GroupChat] fetch non-fatal:", err);
     }
   };
 
@@ -507,30 +503,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const sendChatMessage = async (eventId: string, text: string) => {
     if (!user) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/chat/${eventId}`, {
+      const newMsg = await request<IGroupChatMessage>(`/chat/${eventId}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ text }),
+        body: { text },
       });
-      if (!res.ok) {
-        const err = await res.json();
-        showToast(err.message || "Failed to send message.", "error");
-        return;
+      if (newMsg && newMsg._id) {
+        setChatMessages((prev) => {
+          const current = prev[eventId] || [];
+          if (current.find((m) => m._id === newMsg._id)) return prev;
+          return { ...prev, [eventId]: [...current, newMsg] };
+        });
       }
-      const newMsg = await res.json();
-      // Optimistically add to local state so sender sees it instantly
-      setChatMessages((prev) => {
-        const current = prev[eventId] || [];
-        // Avoid duplicate if polling already picked it up
-        if (current.find((m) => m._id === newMsg._id)) return prev;
-        return { ...prev, [eventId]: [...current, newMsg] };
-      });
-    } catch (err) {
-      showToast("Network error. Message not sent.", "error");
+    } catch (err: any) {
+      showToast(err.message || "Failed to send message.", "error");
     }
   };
 
@@ -539,53 +524,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-      const res = await fetch(`${API_URL}/direct-messages/event/${eventId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const msgs = await res.json();
-      setDirectMessages(msgs);
+      const msgs = await request<IDirectMessage[]>(`/direct-messages/event/${eventId}`);
+      if (Array.isArray(msgs)) {
+        setDirectMessages(msgs);
+      }
     } catch (err) {
-      console.error("[DirectMessages] fetch error:", err);
+      console.warn("[DirectMessages] fetch non-fatal:", err);
     }
   };
 
   const sendDirectMessage = async (eventId: string, attendeeId: string, attendeeName: string, text: string) => {
     if (!user) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/direct-messages/event/${eventId}`, {
+      const newMsg = await request<IDirectMessage>(`/direct-messages/event/${eventId}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ text, attendeeId, attendeeName }),
+        body: { text, attendeeId, attendeeName },
       });
-      if (!res.ok) {
-        const err = await res.json();
-        showToast(err.message || "Failed to send message.", "error");
-        return;
+      if (newMsg && newMsg._id) {
+        setDirectMessages((prev) => {
+          if (prev.find((m) => m._id === newMsg._id)) return prev;
+          return [...prev, newMsg];
+        });
       }
-      const newMsg = await res.json();
-      setDirectMessages((prev) => {
-        if (prev.find((m) => m._id === newMsg._id)) return prev;
-        return [...prev, newMsg];
-      });
-    } catch (err) {
-      showToast("Network error. Message not sent.", "error");
+    } catch (err: any) {
+      showToast(err.message || "Failed to send message.", "error");
     }
   };
 
   const markDirectMessagesAsSeen = async (eventId: string, attendeeId: string) => {
     if (!user) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/direct-messages/seen/${eventId}/${attendeeId}`, {
+      await request(`/direct-messages/seen/${eventId}/${attendeeId}`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) return;
       setDirectMessages((prev) =>
         prev.map((msg) =>
           msg.eventId === eventId && msg.attendeeId === attendeeId && msg.senderId !== user._id
@@ -594,7 +565,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         )
       );
     } catch (err) {
-      console.error("[DirectMessages] mark seen error:", err);
+      console.warn("[DirectMessages] mark seen non-fatal:", err);
     }
   };
 

@@ -442,11 +442,11 @@ export default function AdminDashboardPage() {
                         <p className="empty-msgs">No messages in this chat.</p>
                       ) : (
                         threadMessages.map((msg, idx) => {
-                          const isOwn = msg.senderId === user._id || msg.senderName.includes("Support Admin");
+                          const isOwn = msg.senderId === user._id || (msg.senderName || "").includes("Support Admin");
                           // seen = student has sent a message after this admin message (they've read it)
                           const hasSeen = isOwn && threadMessages
                             .slice(idx + 1)
-                            .some(m => !(m.senderId === user._id || m.senderName.includes("Support Admin")));
+                            .some(m => !(m.senderId === user._id || (m.senderName || "").includes("Support Admin")));
                           return (
                             <div key={msg._id} className={`admin-bubble-row ${isOwn ? "own" : "student"}`}>
                               <div className={`chat-bubble-wrapper ${isOwn ? "own" : "student"}`}>

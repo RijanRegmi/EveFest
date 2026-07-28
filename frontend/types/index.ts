@@ -78,10 +78,18 @@ export interface IDirectMessage {
 
 export interface ISupportMessage {
   _id: string;
-  userId: string;
-  senderId: string;
-  senderName: string;
-  text: string;
+  userId?: string;
+  senderId?: string;
+  senderName?: string;
+  name?: string;
+  email?: string;
+  subject?: string;
+  category?: string;
+  message?: string;
+  text?: string;
+  ticketCode?: string;
+  status?: string;
+  adminResponse?: string;
   createdAt: string;
   updatedAt?: string;
 }

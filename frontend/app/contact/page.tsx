@@ -184,18 +184,19 @@ export default function ContactPage() {
                       </div>
                     ) : (
                       supportMessages.map((msg, idx) => {
-                        const isAdminMsg = msg.senderName.includes("Support Admin") || msg.senderId !== user._id;
+                        const senderNameStr = msg.senderName || msg.name || "";
+                        const isAdminMsg = senderNameStr.includes("Support Admin") || (msg.senderId && user?._id && msg.senderId !== user._id) || msg.category === "Admin Response";
                         // Check if any admin replied after this user message
                         const hasAdminReplied = !isAdminMsg && supportMessages
                           .slice(idx + 1)
-                          .some(m => m.senderName.includes("Support Admin") || m.senderId !== user._id);
+                          .some(m => (m.senderName || m.name || "").includes("Support Admin") || (m.senderId && user?._id && m.senderId !== user._id) || m.category === "Admin Response");
                         return (
                           <div key={msg._id} className={`bubble-row ${isAdminMsg ? "admin" : "user"}`}>
                             <div className={`message-bubble ${isAdminMsg ? "admin" : "user"}`}>
                               {isAdminMsg && (
                                 <span className="msg-sender">Support Admin</span>
                               )}
-                              <p className="msg-text">{msg.text}</p>
+                              <p className="msg-text">{msg.text || msg.message}</p>
                               <span className="msg-time">
                                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </span>
