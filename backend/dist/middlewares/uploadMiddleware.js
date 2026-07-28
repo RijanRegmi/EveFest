@@ -1,81 +1,59 @@
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// Ensure upload directories exist
-const ensureDir = (dir) => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-};
-// Storage for event banner images
-const bannerStorage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-        const uploadPath = path.join(__dirname, "../../../uploads/events");
-        ensureDir(uploadPath);
-        cb(null, uploadPath);
-    },
-    filename: (_req, file, cb) => {
-        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `banner-${uniqueSuffix}${ext}`);
+import dotenv from "dotenv";
+dotenv.config();
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dkmbfnuch",
+    api_key: process.env.CLOUDINARY_API_KEY || "826757367917691",
+    api_secret: process.env.CLOUDINARY_API_SECRET || "uu6KmtsVu9VGD9J_UtBVl598K0c",
+});
+export { cloudinary };
+// Configure Cloudinary storage engine for Multer
+const cloudinaryStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: async (_req, file) => {
+        const isLogo = file.fieldname === "logo";
+        const folder = isLogo ? "evefest/logos" : "evefest/events";
+        const rawExt = path.extname(file.originalname).substring(1).toLowerCase();
+        const format = rawExt || "jpg";
+        return {
+            folder: folder,
+            allowed_formats: ["jpg", "jpeg", "png", "gif", "webp", "svg", "pdf"],
+            public_id: `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+            format: format,
+        };
     },
 });
-// Storage for event logos
-const logoStorage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-        const uploadPath = path.join(__dirname, "../../../uploads/logos");
-        ensureDir(uploadPath);
-        cb(null, uploadPath);
-    },
-    filename: (_req, file, cb) => {
-        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `logo-${uniqueSuffix}${ext}`);
-    },
-});
-// File filter: only allow images
+// File filter: allow images and documents
 const imageFilter = (_req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
+    const allowedTypes = /jpeg|jpg|png|gif|webp|svg|pdf/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (extname && mimetype) {
+    const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === "application/pdf";
+    if (extname || mimetype) {
         cb(null, true);
     }
     else {
-        cb(new Error("Only image files are allowed (jpg, png, gif, webp, svg)"));
+        cb(new Error("Only image and document files are allowed"));
     }
 };
-// Upload for event banners (up to 10MB)
+// Single banner upload (up to 10MB)
 export const uploadBanner = multer({
-    storage: bannerStorage,
+    storage: cloudinaryStorage,
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: imageFilter,
 }).single("banner");
-// Upload for logos (up to 5MB)
+// Single logo upload (up to 5MB)
 export const uploadLogo = multer({
-    storage: logoStorage,
+    storage: cloudinaryStorage,
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: imageFilter,
 }).single("logo");
-// Combined multi-field upload (banner + logo in one request)
+// Combined upload for both banner and logo
 export const uploadEventImages = multer({
-    storage: multer.diskStorage({
-        destination: (_req, file, cb) => {
-            const folder = file.fieldname === "logo" ? "logos" : "events";
-            const uploadPath = path.join(__dirname, `../../../uploads/${folder}`);
-            ensureDir(uploadPath);
-            cb(null, uploadPath);
-        },
-        filename: (_req, file, cb) => {
-            const prefix = file.fieldname === "logo" ? "logo" : "banner";
-            const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-            const ext = path.extname(file.originalname).toLowerCase();
-            cb(null, `${prefix}-${uniqueSuffix}${ext}`);
-        },
-    }),
+    storage: cloudinaryStorage,
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: imageFilter,
 }).fields([

@@ -16,13 +16,13 @@ export const createEvent = async (req, res, next) => {
         const body = { ...req.body };
         const files = req.files;
         if (files?.banner?.[0]) {
-            body.image = `/uploads/events/${files.banner[0].filename}`;
+            body.image = files.banner[0].path || `/uploads/events/${files.banner[0].filename}`;
         }
         if (files?.logo?.[0]) {
-            body.logo = `/uploads/logos/${files.logo[0].filename}`;
+            body.logo = files.logo[0].path || `/uploads/logos/${files.logo[0].filename}`;
         }
         if (req.file) {
-            body.image = `/uploads/events/${req.file.filename}`;
+            body.image = req.file.path || `/uploads/events/${req.file.filename}`;
         }
         const event = await eventService.createEvent(body, req.user._id.toString(), req.user.name);
         res.status(201).json(event);
@@ -56,13 +56,13 @@ export const updateEvent = async (req, res, next) => {
         const body = { ...req.body };
         const files = req.files;
         if (files?.banner?.[0]) {
-            body.image = `/uploads/events/${files.banner[0].filename}`;
+            body.image = files.banner[0].path || `/uploads/events/${files.banner[0].filename}`;
         }
         if (files?.logo?.[0]) {
-            body.logo = `/uploads/logos/${files.logo[0].filename}`;
+            body.logo = files.logo[0].path || `/uploads/logos/${files.logo[0].filename}`;
         }
         if (req.file) {
-            body.image = `/uploads/events/${req.file.filename}`;
+            body.image = req.file.path || `/uploads/events/${req.file.filename}`;
         }
         const event = await eventService.updateEvent(String(req.params.id), req.user._id.toString(), body);
         res.status(200).json(event);
@@ -105,10 +105,10 @@ export const uploadEventImages = async (req, res, next) => {
         const result = {};
         const files = req.files;
         if (files?.banner?.[0]) {
-            result.imageUrl = `/uploads/events/${files.banner[0].filename}`;
+            result.imageUrl = files.banner[0].path || `/uploads/events/${files.banner[0].filename}`;
         }
         if (files?.logo?.[0]) {
-            result.logoUrl = `/uploads/logos/${files.logo[0].filename}`;
+            result.logoUrl = files.logo[0].path || `/uploads/logos/${files.logo[0].filename}`;
         }
         if (!result.imageUrl && !result.logoUrl) {
             res.status(400);

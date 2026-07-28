@@ -30,13 +30,13 @@ export const createEvent = async (
       | undefined;
 
     if (files?.banner?.[0]) {
-      body.image = `/uploads/events/${files.banner[0].filename}`;
+      body.image = files.banner[0].path || `/uploads/events/${files.banner[0].filename}`;
     }
     if (files?.logo?.[0]) {
-      body.logo = `/uploads/logos/${files.logo[0].filename}`;
+      body.logo = files.logo[0].path || `/uploads/logos/${files.logo[0].filename}`;
     }
     if (req.file) {
-      body.image = `/uploads/events/${req.file.filename}`;
+      body.image = req.file.path || `/uploads/events/${req.file.filename}`;
     }
 
     const event = await eventService.createEvent(
@@ -87,13 +87,13 @@ export const updateEvent = async (
       | undefined;
 
     if (files?.banner?.[0]) {
-      body.image = `/uploads/events/${files.banner[0].filename}`;
+      body.image = files.banner[0].path || `/uploads/events/${files.banner[0].filename}`;
     }
     if (files?.logo?.[0]) {
-      body.logo = `/uploads/logos/${files.logo[0].filename}`;
+      body.logo = files.logo[0].path || `/uploads/logos/${files.logo[0].filename}`;
     }
     if (req.file) {
-      body.image = `/uploads/events/${req.file.filename}`;
+      body.image = req.file.path || `/uploads/events/${req.file.filename}`;
     }
 
     const event = await eventService.updateEvent(
@@ -148,10 +148,10 @@ export const uploadEventImages = async (
       | undefined;
 
     if (files?.banner?.[0]) {
-      result.imageUrl = `/uploads/events/${files.banner[0].filename}`;
+      result.imageUrl = files.banner[0].path || `/uploads/events/${files.banner[0].filename}`;
     }
     if (files?.logo?.[0]) {
-      result.logoUrl = `/uploads/logos/${files.logo[0].filename}`;
+      result.logoUrl = files.logo[0].path || `/uploads/logos/${files.logo[0].filename}`;
     }
     if (!result.imageUrl && !result.logoUrl) {
       res.status(400);
