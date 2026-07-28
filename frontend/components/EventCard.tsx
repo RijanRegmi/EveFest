@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, MapPin, Tv, Users, ArrowRight, ShieldCheck } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { getBackendBaseUrl } from "../services/api";
 import type { IEvent } from "@/types";
 
 export interface EventCardProps {
@@ -18,7 +19,7 @@ export default function EventCard({ event, onClick }: EventCardProps) {
     const bookingEventId = typeof b.event === "object" ? b.event._id : b.event;
     return bookingEventId === event._id;
   });
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000";
+  const BACKEND_URL = getBackendBaseUrl();
 
   // Resolve image URL - handles both absolute URLs and relative backend paths
   const resolveImageUrl = (url: string | null | undefined) => {

@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import type { IEvent } from "@/types";
 
+import { getApiBaseUrl } from "../services/api";
+
 export interface HeroProps {
   searchQuery: string;
   setSearchQuery: (val: string) => void;
@@ -54,7 +56,7 @@ export default function Hero({
   React.useEffect(() => {
     const fetchStats = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+        const API_URL = getApiBaseUrl();
         const res = await fetch(`${API_URL}/events/stats`);
         if (res.ok) {
           const data = await res.json();
