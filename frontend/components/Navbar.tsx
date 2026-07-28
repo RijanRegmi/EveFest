@@ -39,7 +39,7 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
         {/* Logo */}
         <div className="logo-group" onClick={() => handleNav("explore")}>
           <div className="logo-icon">
-            <Calendar size={22} className="logo-svg" />
+            <img src="/logo.png" alt="EveFest Logo" className="logo-img" />
           </div>
           <span className="logo-text">Eve<span className="text-gradient">Fest</span></span>
         </div>
@@ -251,15 +251,17 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
           cursor: pointer;
         }
         .logo-icon {
-          width: 38px;
-          height: 38px;
-          border-radius: var(--border-radius-sm);
-          background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+          width: 40px;
+          height: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: white;
-          box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+        }
+        .logo-img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
         }
         .logo-text {
           font-size: 1.35rem;

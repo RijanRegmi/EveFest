@@ -16,6 +16,14 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "EveFest - Event Management Hub",
   description: "Explore, book, and host amazing college events and workshops.",
+  icons: {
+    icon: [
+      { url: "/logo.png" },
+      { url: "/favicon.ico" }
+    ],
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

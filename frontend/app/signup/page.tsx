@@ -158,7 +158,7 @@ export default function SignupPage() {
           {/* Logo Group */}
           <div className="brand-logo-group">
             <div className="logo-icon-box">
-              <Calendar size={28} />
+              <img src="/logo.png" alt="EveFest Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
             <span className="logo-text">Eve<span className="text-gradient">Fest</span></span>
           </div>
@@ -478,13 +478,9 @@ export default function SignupPage() {
         .logo-icon-box {
           width: 44px;
           height: 44px;
-          border-radius: var(--border-radius-md);
-          background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
           display: flex;
           align-items: center;
           justify-content: center;
-          color: white;
-          box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
         }
 
         .logo-text {
