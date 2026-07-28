@@ -23,21 +23,17 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files as static assets
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-// Route registration
-app.use("/api/auth", authRoutes);
-app.use("/api/events", eventRoutes);
-app.use("/api/bookings", bookingRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/support", supportRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/api/direct-messages", directMessageRoutes);
+// Dual route registration (supports both standalone /api/* and Vercel serverless /*)
+app.use(["/api/auth", "/auth"], authRoutes);
+app.use(["/api/events", "/events"], eventRoutes);
+app.use(["/api/bookings", "/bookings"], bookingRoutes);
+app.use(["/api/admin", "/admin"], adminRoutes);
+app.use(["/api/support", "/support"], supportRoutes);
+app.use(["/api/chat", "/chat"], chatRoutes);
+app.use(["/api/direct-messages", "/direct-messages"], directMessageRoutes);
 
 // Root path test response
-app.get("/", (_req, res) => {
-  res.json({ status: "running", api: "EveFest API v1.0.0" });
-});
-
-app.get("/api", (_req, res) => {
+app.get(["/", "/api"], (_req, res) => {
   res.json({ status: "running", api: "EveFest API v1.0.0" });
 });
 
