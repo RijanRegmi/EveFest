@@ -1,4 +1,3 @@
-import "./types/express.d.ts";
 import dotenv from "dotenv";
 import app from "./app";
 import { connectDB } from "./config/db";
