@@ -41,7 +41,7 @@ export default function Navbar({ currentView, setCurrentView }: NavbarProps) {
           <div className="logo-icon">
             <img src="/logo.png" alt="EveFest Logo" className="logo-img" />
           </div>
-          <span className="logo-text">Eve<span className="text-gradient">Fest</span></span>
+          <span className="logo-text"><span className="text-red">Eve</span><span className="text-gradient">Fest</span></span>
         </div>
 
         {/* Center: Navigation Links */}

@@ -194,7 +194,7 @@ function HomeContent() {
       <footer className="footer-layout">
         <div className="container footer-container">
           <div className="footer-left">
-            <span className="footer-logo">EveFest</span>
+            <span className="footer-logo"><span className="text-red">Eve</span>Fest</span>
             <p className="footer-text">© {new Date().getFullYear()} EveFest. Handcrafted modern university campus event organizer platform.</p>
           </div>
           <div className="footer-links">
@@ -238,8 +238,8 @@ function HomeContent() {
         
         .events-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 1.5rem;
+          grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+          gap: 1.85rem;
         }
         
         /* Loader styles */

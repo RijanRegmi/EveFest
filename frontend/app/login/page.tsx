@@ -50,7 +50,7 @@ export default function LoginPage() {
             <div className="logo-icon-box">
               <img src="/logo.png" alt="EveFest Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
-            <span className="logo-text">Eve<span className="text-gradient">Fest</span></span>
+            <span className="logo-text"><span className="text-red">Eve</span><span className="text-gradient">Fest</span></span>
           </div>
 
           <div className="branding-main">

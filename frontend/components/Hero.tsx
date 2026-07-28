@@ -1,7 +1,24 @@
 "use client";
 
 import React from "react";
-import { Search, Compass, Tv, DollarSign, BookOpen, Layers } from "lucide-react";
+import { 
+  Search, 
+  Tv, 
+  DollarSign, 
+  BookOpen, 
+  Layers, 
+  Trophy, 
+  Cpu, 
+  Music, 
+  Palette, 
+  Paintbrush, 
+  Code, 
+  Users, 
+  Gamepad2, 
+  Activity, 
+  GraduationCap, 
+  Sparkles 
+} from "lucide-react";
 import type { IEvent } from "@/types";
 
 export interface HeroProps {
@@ -99,23 +116,23 @@ export default function Hero({
 
   const categoryIcons: Record<string, React.ReactNode> = {
     "All": <Layers size={15} />,
-    "Sports": <Compass size={15} />,
-    "Technology": <Compass size={15} />,
-    "Music": <Compass size={15} />,
-    "Design": <Compass size={15} />,
-    "Arts": <Compass size={15} />,
+    "Sports": <Trophy size={15} />,
+    "Technology": <Cpu size={15} />,
+    "Music": <Music size={15} />,
+    "Design": <Palette size={15} />,
+    "Arts": <Paintbrush size={15} />,
     "Workshop": <BookOpen size={15} />,
-    "Hackathon": <Compass size={15} />,
-    "Conference": <Compass size={15} />,
-    "Social": <Compass size={15} />,
-    "Gaming": <Compass size={15} />,
-    "Health": <Compass size={15} />,
-    "Education": <BookOpen size={15} />,
+    "Hackathon": <Code size={15} />,
+    "Conference": <Users size={15} />,
+    "Social": <Users size={15} />,
+    "Gaming": <Gamepad2 size={15} />,
+    "Health": <Activity size={15} />,
+    "Education": <GraduationCap size={15} />,
   };
 
   const categories = allCategoryNames.map(name => ({
     name,
-    icon: categoryIcons[name] || <Compass size={15} />
+    icon: categoryIcons[name] || <Sparkles size={15} />
   }));
 
   return (

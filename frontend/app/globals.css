@@ -414,6 +414,10 @@ select option {
   background-clip: text;
 }
 
+.text-red {
+  color: #ff3030;
+}
+
 /* Navbar & Mobile Navigation Menu Global Styles */
 .nav-link {
   display: inline-flex !important;
