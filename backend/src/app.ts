@@ -3,15 +3,14 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
-import authRoutes from "./routes/authRoutes.js";
-import eventRoutes from "./routes/eventRoutes.js";
-import bookingRoutes from "./routes/bookingRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import supportRoutes from "./routes/supportRoutes.js";
-import chatRoutes from "./routes/chatRoutes.js";
-import directMessageRoutes from "./routes/directMessageRoutes.js";
-import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
+import authRoutes from "./routes/authRoutes";
+import eventRoutes from "./routes/eventRoutes";
+import bookingRoutes from "./routes/bookingRoutes";
+import adminRoutes from "./routes/adminRoutes";
+import supportRoutes from "./routes/supportRoutes";
+import chatRoutes from "./routes/chatRoutes";
+import directMessageRoutes from "./routes/directMessageRoutes";
+import { notFound, errorHandler } from "./middlewares/errorMiddleware";
 
 dotenv.config();
 
@@ -23,9 +22,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded files as static assets
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use("/uploads", express.static(path.join(__dirname, "../../uploads")));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // Route registration
 app.use("/api/auth", authRoutes);

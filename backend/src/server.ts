@@ -1,8 +1,8 @@
 import "./types/express.d.ts";
 import dotenv from "dotenv";
-import app from "./app.js";
-import { connectDB } from "./config/db.js";
-import { seedDatabase } from "./config/seed.js";
+import app from "./app";
+import { connectDB } from "./config/db";
+import { seedDatabase } from "./config/seed";
 
 dotenv.config();
 

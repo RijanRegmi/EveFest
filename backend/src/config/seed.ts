@@ -1,5 +1,5 @@
-import Event from "../models/Event.js";
-import User from "../models/User.js";
+import Event from "../models/Event";
+import User from "../models/User";
 
 export const seedDatabase = async (): Promise<void> => {
   try {
