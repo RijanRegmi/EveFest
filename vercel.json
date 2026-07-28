@@ -1,1 +1,13 @@
-{}
+{
+  "services": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "nextjs"
+    },
+    "backend": {
+      "root": "backend",
+      "framework": "express",
+      "entrypoint": "src/server.ts"
+    }
+  }
+}
