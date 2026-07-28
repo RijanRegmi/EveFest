@@ -1,5 +1,14 @@
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: {
+    root: path.resolve(__dirname, "../"),
+  },
   images: {
     remotePatterns: [
       {
@@ -21,16 +30,6 @@ const nextConfig = {
         hostname: "**",
       },
     ],
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: process.env.BACKEND_API_URL
-          ? `${process.env.BACKEND_API_URL}/api/:path*`
-          : "http://localhost:5000/api/:path*",
-      },
-    ];
   },
 };
 
