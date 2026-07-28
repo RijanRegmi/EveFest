@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "../context/AppContext";
+import StyledJsxRegistry from "./registry";
 import React, { ReactNode } from "react";
 
 const geistSans = Geist({
@@ -28,11 +29,31 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`dark ${geistSans.variable} ${geistMono.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var t = localStorage.getItem('theme');
+                  if (t === 'light') {
+                    document.documentElement.classList.remove('dark');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body>
-        <AppProvider>
-          {children}
-        </AppProvider>
+        <StyledJsxRegistry>
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </StyledJsxRegistry>
       </body>
     </html>
   );

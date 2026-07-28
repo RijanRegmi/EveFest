@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import AnimatedBackground from "./AnimatedBackground";
 import { 
   Search, 
   Tv, 
@@ -115,28 +116,29 @@ export default function Hero({
   const allCategoryNames = ["All", ...eventCategories];
 
   const categoryIcons: Record<string, React.ReactNode> = {
-    "All": <Layers size={15} />,
-    "Sports": <Trophy size={15} />,
-    "Technology": <Cpu size={15} />,
-    "Music": <Music size={15} />,
-    "Design": <Palette size={15} />,
-    "Arts": <Paintbrush size={15} />,
-    "Workshop": <BookOpen size={15} />,
-    "Hackathon": <Code size={15} />,
-    "Conference": <Users size={15} />,
-    "Social": <Users size={15} />,
-    "Gaming": <Gamepad2 size={15} />,
-    "Health": <Activity size={15} />,
-    "Education": <GraduationCap size={15} />,
+    "All": <Layers size={24} />,
+    "Sports": <Trophy size={24} />,
+    "Technology": <Cpu size={24} />,
+    "Music": <Music size={24} />,
+    "Design": <Palette size={24} />,
+    "Arts": <Paintbrush size={24} />,
+    "Workshop": <BookOpen size={24} />,
+    "Hackathon": <Code size={24} />,
+    "Conference": <Users size={24} />,
+    "Social": <Users size={24} />,
+    "Gaming": <Gamepad2 size={24} />,
+    "Health": <Activity size={24} />,
+    "Education": <GraduationCap size={24} />,
   };
 
   const categories = allCategoryNames.map(name => ({
     name,
-    icon: categoryIcons[name] || <Sparkles size={15} />
+    icon: categoryIcons[name] || <Sparkles size={24} />
   }));
 
   return (
     <section className="hero-section">
+      <AnimatedBackground />
       {/* Background Decorative Accents (Aesthetic-Usability Effect) */}
       <div className="bg-glow bg-glow-violet animate-float"></div>
       <div className="bg-glow bg-glow-cyan animate-float" style={{ animationDelay: "-4s" }}></div>
@@ -152,7 +154,7 @@ export default function Hero({
         </h1>
         
         <p className="hero-subtitle">
-          Connect with campus societies, join workshops, register for hackathons, or coordinate your own group events with ease. 100% human-designed, premium UX built for campus and community hubs.
+          Connect with campus societies, discover upcoming workshops, register for coding hackathons, or host your own group events with ease. Your central hub for campus and community activities.
         </p>
 
         {/* Filter Toolbar Panel */}
@@ -199,18 +201,20 @@ export default function Hero({
           </div>
         </div>
 
-        {/* Category Tabs (Hick's Law / Staggering) */}
+        {/* Category Tabs (Tile Box Cards with Big Icons on Top & Name Below) */}
         <div className="category-container">
           <div className="category-scroll">
             {categories.map((cat, idx) => (
               <button
                 key={cat.name}
                 onClick={() => setSelectedCategory(cat.name)}
-                className={`category-tab animate-stagger-item ${selectedCategory === cat.name ? "active" : ""}`}
+                className={`category-tab-box animate-stagger-item ${selectedCategory === cat.name ? "active" : ""}`}
                 style={{ "--index": idx } as React.CSSProperties}
               >
-                {cat.icon}
-                {cat.name}
+                <div className="category-icon-box">
+                  {cat.icon}
+                </div>
+                <span className="category-name">{cat.name}</span>
               </button>
             ))}
           </div>
@@ -382,42 +386,77 @@ export default function Hero({
         
         .category-scroll {
           display: flex;
-          gap: 0.75rem;
-          padding: 0.25rem;
+          gap: 1rem;
+          padding: 0.5rem 0.25rem;
           overflow-x: auto;
-          scrollbar-width: none; /* Firefox */
+          scrollbar-width: none;
         }
         
         .category-scroll::-webkit-scrollbar {
-          display: none; /* Safari and Chrome */
+          display: none;
         }
         
-        .category-tab {
-          display: inline-flex;
+        .category-tab-box {
+          display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.55rem 1.25rem;
-          border-radius: var(--border-radius-full);
-          font-size: 0.9rem;
-          font-weight: 600;
-          color: var(--fg-secondary);
-          background: var(--bg-secondary);
+          justify-content: center;
+          min-width: 98px;
+          padding: 0.95rem 0.85rem 0.8rem;
+          border-radius: var(--border-radius-md);
+          background: var(--glass-bg);
           border: 1px solid var(--glass-border);
-          transition: var(--transition-smooth);
+          backdrop-filter: blur(12px);
+          color: var(--fg-secondary);
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           white-space: nowrap;
         }
         
-        .category-tab:hover {
-          background: var(--bg-tertiary);
+        .category-icon-box {
+          width: 48px;
+          height: 48px;
+          border-radius: var(--border-radius-sm);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(99, 102, 241, 0.08);
           color: var(--accent-primary);
-          border-color: var(--accent-primary);
+          margin-bottom: 0.55rem;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
         
-        .category-tab.active {
-          background: var(--accent-primary);
-          color: #ffffff;
+        .category-name {
+          font-size: 0.85rem;
+          font-weight: 700;
+          letter-spacing: -0.2px;
+          transition: color 0.3s ease;
+        }
+        
+        .category-tab-box:hover {
+          transform: translateY(-5px);
           border-color: var(--accent-primary);
-          box-shadow: var(--shadow-glow);
+          color: var(--fg-primary);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .category-tab-box:hover .category-icon-box {
+          background: rgba(99, 102, 241, 0.18);
+          transform: scale(1.08);
+        }
+        
+        .category-tab-box.active {
+          background: rgba(99, 102, 241, 0.12);
+          border-color: var(--accent-primary);
+          color: var(--fg-primary);
+          box-shadow: 0 8px 30px rgba(99, 102, 241, 0.25);
+        }
+        
+        .category-tab-box.active .category-icon-box {
+          background: linear-gradient(135deg, #ff3030, #6366f1);
+          color: #ffffff;
+          box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+          transform: scale(1.05);
         }
         
         /* Stats Styling */

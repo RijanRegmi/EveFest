@@ -165,8 +165,7 @@ export default function EventCard({ event, onClick }: EventCardProps) {
                       box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           height: 100%;
           border: 1px solid var(--glass-border);
-          background: var(--glass-bg);
-          backdrop-filter: blur(16px);
+          background: var(--bg-secondary);
         }
         
         .event-card:hover {

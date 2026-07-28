@@ -148,7 +148,7 @@ function HomeContent() {
               <div className="guide-card glass-panel">
                 <div className="guide-badge">
                   <Sparkles size={16} />
-                  <span>USER COMPLIANCE GUIDE</span>
+                  <span>STUDENT & ORGANIZER GUIDE</span>
                 </div>
                 <h2 className="guide-title">How EveFest Works</h2>
                 <p className="guide-desc">
