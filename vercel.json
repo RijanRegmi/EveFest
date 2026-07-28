@@ -1,16 +1,1 @@
-{
-  "services": {
-    "frontend": {
-      "root": "frontend",
-      "framework": "nextjs"
-    },
-    "backend": {
-      "root": "backend",
-      "entrypoint": "api/index.ts"
-    }
-  },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "backend" },
-    { "src": "/(.*)", "dest": "frontend" }
-  ]
-}
+{}
