@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { 
   fetchEvents, 
   createEventApi, 
@@ -486,7 +486,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // 6. Group Chat Room actions — backed by real API
-  const fetchGroupMessages = async (eventId: string) => {
+  const fetchGroupMessages = useCallback(async (eventId: string) => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
@@ -494,10 +494,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (Array.isArray(msgs)) {
         setChatMessages((prev) => ({ ...prev, [eventId]: msgs }));
       }
-    } catch (err) {
-      console.warn("[GroupChat] fetch non-fatal:", err);
+    } catch {
+      // Silently ignore non-fatal background polling error
     }
-  };
+  }, []);
 
   // Send a message to the event group chat
   const sendChatMessage = async (eventId: string, text: string) => {
@@ -520,7 +520,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // 7. Direct Messages (Support Chat) — backed by real API
-  const fetchDirectMessages = async (eventId: string) => {
+  const fetchDirectMessages = useCallback(async (eventId: string) => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
@@ -528,10 +528,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (Array.isArray(msgs)) {
         setDirectMessages(msgs);
       }
-    } catch (err) {
-      console.warn("[DirectMessages] fetch non-fatal:", err);
+    } catch {
+      // Silently ignore non-fatal background polling error
     }
-  };
+  }, []);
 
   const sendDirectMessage = async (eventId: string, attendeeId: string, attendeeName: string, text: string) => {
     if (!user) return;
@@ -564,8 +564,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             : msg
         )
       );
-    } catch (err) {
-      console.warn("[DirectMessages] mark seen non-fatal:", err);
+    } catch {
+      // Silently ignore non-fatal background seen marking error
     }
   };
 

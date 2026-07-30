@@ -206,10 +206,10 @@ export async function checkAvailabilityApi(
   value: string
 ): Promise<{ available: boolean }> {
   try {
-    return await request<{ available: boolean }>("/auth/check-availability", {
-      method: "POST",
-      body: { field, value },
-    });
+    return await request<{ available: boolean }>(
+      `/auth/check-availability?field=${encodeURIComponent(field)}&value=${encodeURIComponent(value)}`,
+      { method: "GET" }
+    );
   } catch (error) {
     if (isNetworkError(error)) {
       const users = getLocalUsers();
@@ -223,6 +223,6 @@ export async function checkAvailabilityApi(
       }
       return { available: isAvailable };
     }
-    throw error;
+    return { available: true };
   }
 }

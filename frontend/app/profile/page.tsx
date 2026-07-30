@@ -47,9 +47,7 @@ function ProfilePageContent() {
         phoneNumber: user.phoneNumber || "",
         password: ""
       });
-      getSupportMessages().catch((err) => {
-        console.warn("Support messages non-fatal load warning:", err);
-      });
+      getSupportMessages().catch(() => {});
     }
   }, [user]);
 

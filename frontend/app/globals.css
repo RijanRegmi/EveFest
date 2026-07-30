@@ -197,6 +197,21 @@ select option {
   transform: translateY(-2px);
 }
 
+.btn-danger {
+  background: var(--color-danger, #ef4444);
+  color: #ffffff;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+  transform: translateY(-2px);
+}
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-icon {
   width: 40px;
   height: 40px;

@@ -102,6 +102,11 @@ export default function EventCard({ event, onClick }: EventCardProps) {
             </div>
           )}
           <span className="event-host">Hosted by {event.hostName || "EveFest Hub"}</span>
+          {event.proofDoc && (
+            <span className="verified-shield-badge" title="Verified Campus Host">
+              <ShieldCheck size={16} />
+            </span>
+          )}
         </div>
 
         {/* Title */}

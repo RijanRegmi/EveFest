@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, FormEvent } from "react";
 import Navbar from "../../components/Navbar";
 import { useApp } from "../../context/AppContext";
 import { useRouter } from "next/navigation";
+import ConfirmModal from "../../components/ConfirmModal";
 import { 
   Users, 
   ShieldAlert, 
@@ -48,6 +49,19 @@ export default function AdminDashboardPage() {
   // Modals state
   const [userModal, setUserModal] = useState<{ open: boolean; type: "create" | "edit"; user: IUser | null }>({ open: false, type: "create", user: null });
   const [takedownModal, setTakedownModal] = useState<{ open: boolean; eventId: string | null; eventTitle: string }>({ open: false, eventId: null, eventTitle: "" });
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
   const [userForm, setUserForm] = useState({ name: "", username: "", email: "", phoneNumber: "", password: "", role: "user" });
   const [takedownReason, setTakedownReason] = useState("");
   
@@ -171,10 +185,17 @@ export default function AdminDashboardPage() {
   };
 
   // Handle Delete User
-  const handleDeleteUser = async (userId: string, name: string) => {
-    if (window.confirm(`Are you sure you want to permanently delete user "${name}"? This will automatically clear all their bookings and hosted events.`)) {
-      await deleteAdminUser(userId);
-    }
+  const handleDeleteUser = (userId: string, name: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete User Account",
+      message: `Are you sure you want to permanently delete user "${name}"? This will automatically clear all their bookings and hosted events.`,
+      confirmText: "Delete User",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        await deleteAdminUser(userId);
+      },
+    });
   };
 
   // Handle Takedown Submit
@@ -371,14 +392,17 @@ export default function AdminDashboardPage() {
                         <td className="text-right">
                           {!evt.isTakedown ? (
                             <button 
-                              className="btn btn-danger btn-sm"
-                              onClick={() => setTakedownModal({ open: true, eventId: evt._id, eventTitle: evt.title })}
+                              className="btn-takedown-action"
+                              onClick={() => {
+                                setTakedownReason("");
+                                setTakedownModal({ open: true, eventId: evt._id, eventTitle: evt.title });
+                              }}
                             >
-                              Take Down
+                              <ShieldOff size={13} /> Take Down
                             </button>
                           ) : (
                             <span className="takedown-reason-text" title={evt.takedownReason}>
-                              Reason: {evt.takedownReason.slice(0, 18)}...
+                              Reason: {evt.takedownReason ? evt.takedownReason.slice(0, 18) : "Moderated"}...
                             </span>
                           )}
                         </td>
@@ -411,12 +435,12 @@ export default function AdminDashboardPage() {
                         className={`thread-item ${activeThreadId === thread.userId ? "active" : ""}`}
                         onClick={() => {
                           setActiveThreadId(thread.userId);
-                          setActiveThreadName(thread.user.name);
+                          setActiveThreadName(thread.user?.name || "Deleted User");
                         }}
                       >
                         <div className="thread-meta">
-                          <span className="user-name">{thread.user.name}</span>
-                          <span className="user-email">{thread.user.email}</span>
+                          <span className="user-name">{thread.user?.name || "Deleted User"}</span>
+                          <span className="user-email">{thread.user?.email || "N/A"}</span>
                         </div>
                         <p className="latest-text text-truncate">{thread.latestMessage?.text || "Started conversation"}</p>
                       </div>
@@ -627,6 +651,28 @@ export default function AdminDashboardPage() {
         .status-badge.success { background: rgba(16, 185, 129, 0.1); color: #10b981; }
         .status-badge.danger { background: rgba(239, 68, 68, 0.1); color: var(--color-danger); }
 
+        .btn-takedown-action {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          padding: 0.45rem 0.9rem;
+          border-radius: 8px;
+          background: rgba(239, 68, 68, 0.15);
+          color: #f87171;
+          border: 1px solid rgba(239, 68, 68, 0.35);
+          font-size: 0.82rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .btn-takedown-action:hover {
+          background: #ef4444;
+          color: #ffffff;
+          border-color: #ef4444;
+          box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+          transform: translateY(-1px);
+        }
+
         .date-cell { display: flex; align-items: center; gap: 0.35rem; color: var(--fg-tertiary); }
         .category-tag { background: var(--bg-secondary); border: 1px solid var(--glass-border); padding: 0.2rem 0.5rem; border-radius: var(--border-radius-sm); font-size: 0.76rem; font-weight: 650; }
 
@@ -708,6 +754,14 @@ export default function AdminDashboardPage() {
           .search-box { max-width: 100%; }
         }
       `}</style>
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </>
   );
 }

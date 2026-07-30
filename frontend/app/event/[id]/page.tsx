@@ -7,6 +7,7 @@ import { fetchEventById } from "../../../services/eventService";
 import { IEvent, IBooking, IDirectMessage, IGroupChatMessage } from "../../../types";
 import Navbar from "../../../components/Navbar";
 import AuthModal from "../../../components/AuthModal";
+import ConfirmModal from "../../../components/ConfirmModal";
 import {
   ArrowLeft,
   Calendar,
@@ -79,6 +80,19 @@ function EventDetailPageContent() {
   const [checkoutError, setCheckoutError] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingQty, setBookingQty] = useState(1);
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   // Check registration status - hooks and variables moved to top to prevent Rules of Hooks violations
   const userEventBookings = event ? bookings.filter(
@@ -462,12 +476,19 @@ function EventDetailPageContent() {
     processBooking();
   };
 
-  const handleCancelSpecific = async (bookingId: string) => {
-    if (window.confirm("Are you sure you want to cancel this ticket pass?")) {
-      setBookingLoading(true);
-      await cancelBooking(bookingId);
-      setBookingLoading(false);
-    }
+  const handleCancelSpecific = (bookingId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Cancel Ticket Pass",
+      message: "Are you sure you want to cancel this ticket pass? This action will free up your registered seat.",
+      confirmText: "Cancel Pass",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        setBookingLoading(true);
+        await cancelBooking(bookingId);
+        setBookingLoading(false);
+      },
+    });
   };
 
   const handleBackClick = () => {
@@ -1001,12 +1022,20 @@ function EventDetailPageContent() {
     );
   };
 
-  const handleDeleteEvent = async () => {
-    if (!window.confirm("Are you sure you want to permanently delete this event? This action cannot be undone.")) return;
-    const success = await deleteEvent(event._id);
-    if (success) {
-      router.push("/");
-    }
+  const handleDeleteEvent = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Event",
+      message: "Are you sure you want to permanently delete this event? This action cannot be undone.",
+      confirmText: "Delete Event",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        const success = await deleteEvent(event._id);
+        if (success) {
+          router.push("/");
+        }
+      },
+    });
   };
 
   const formattedEventDate = event.date ? new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : "";
@@ -2719,6 +2748,14 @@ function EventDetailPageContent() {
           }
         }
       `}</style>
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </>
   );
 }

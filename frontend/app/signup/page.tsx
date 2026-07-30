@@ -55,7 +55,7 @@ export default function SignupPage() {
         setChecking((prev) => ({ ...prev, username: false }));
       }
     };
-    const timer = setTimeout(checkUsername, 600);
+    const timer = setTimeout(checkUsername, 200);
     return () => clearTimeout(timer);
   }, [formData.username]);
 
@@ -75,7 +75,7 @@ export default function SignupPage() {
         setChecking((prev) => ({ ...prev, email: false }));
       }
     };
-    const timer = setTimeout(checkEmail, 600);
+    const timer = setTimeout(checkEmail, 200);
     return () => clearTimeout(timer);
   }, [formData.email]);
 
@@ -95,7 +95,7 @@ export default function SignupPage() {
         setChecking((prev) => ({ ...prev, phoneNumber: false }));
       }
     };
-    const timer = setTimeout(checkPhone, 600);
+    const timer = setTimeout(checkPhone, 200);
     return () => clearTimeout(timer);
   }, [formData.phoneNumber]);
 

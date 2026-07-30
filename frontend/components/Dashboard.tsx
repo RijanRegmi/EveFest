@@ -5,6 +5,7 @@ import { useApp } from "../context/AppContext";
 import { useRouter } from "next/navigation";
 import { Ticket, Users, Calendar, MapPin, QrCode, Download, Trash2, ShieldCheck, UserCheck, Edit, X, Clock, History } from "lucide-react";
 import { isEventExpired } from "../utils/dateUtils";
+import ConfirmModal from "./ConfirmModal";
 
 export default function Dashboard() {
   const { user, events, bookings, cancelBooking, showToast, deleteEvent } = useApp();
@@ -12,6 +13,19 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"tickets" | "hosted">("tickets");
   const [hostedFilter, setHostedFilter] = useState<"all" | "active" | "history">("all");
   const [attendeeModal, setAttendeeModal] = useState<{ open: boolean; eventId: string | null }>({ open: false, eventId: null });
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   // Filter events hosted by this user
   const hostedEvents = events.filter((e) => e.hostId === user?._id);
@@ -24,16 +38,30 @@ export default function Dashboard() {
     return true;
   });
 
-  const handleCancelTicket = async (bookingId: string) => {
-    if (window.confirm("Are you sure you want to cancel this ticket booking?")) {
-      await cancelBooking(bookingId);
-    }
+  const handleCancelTicket = (bookingId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Cancel Ticket Pass",
+      message: "Are you sure you want to cancel this ticket booking?",
+      confirmText: "Cancel Pass",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        await cancelBooking(bookingId);
+      },
+    });
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    if (window.confirm("Are you sure you want to permanently delete this event? This action cannot be undone.")) {
-      await deleteEvent(eventId);
-    }
+  const handleDeleteEvent = (eventId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Event",
+      message: "Are you sure you want to permanently delete this event? This action cannot be undone.",
+      confirmText: "Delete Event",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        await deleteEvent(eventId);
+      },
+    });
   };
 
   // Generate simulated attendee roster
@@ -838,6 +866,14 @@ export default function Dashboard() {
           }
         }
       `}</style>
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
